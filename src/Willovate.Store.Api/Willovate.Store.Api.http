@@ -1,0 +1,14 @@
+@host = http://localhost:5191
+
+GET {{host}}/api/health
+Accept: application/json
+
+###
+
+GET {{host}}/api/products?featured=true&pageSize=8
+Accept: application/json
+
+###
+
+GET {{host}}/api/products/cloud-linen-shirt
+Accept: application/json
