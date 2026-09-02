@@ -4,7 +4,10 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Willovate.Store.Api.Contracts;
+using Willovate.Store.Api.Data;
 
 namespace Willovate.Store.Api.Tests;
 
@@ -159,6 +162,177 @@ public sealed class StoreApiTests : IAsyncLifetime
         // Verify customer was persisted by attempting duplicate registration
         var duplicateResponse = await client!.PostAsJsonAsync("/api/auth/register", request);
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task LoginEndpoint_SuccessfullyAuthenticatesValidCredentials()
+    {
+        var registerRequest = new RegisterRequest(
+            Email: "login@example.com",
+            Password: "CorrectPassword123!",
+            FirstName: "Login",
+            LastName: "User");
+
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        var loginRequest = new LoginRequest(
+            Email: "login@example.com",
+            Password: "CorrectPassword123!");
+
+        var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var result = await response.Content.ReadFromJsonAsync<CustomerResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.Equal("login@example.com", result.Email);
+        Assert.Equal("Login", result.FirstName);
+        Assert.Equal("User", result.LastName);
+    }
+
+    [Fact]
+    public async Task LoginEndpointReturnsOnlyCustomerSafeFields()
+    {
+        var registerRequest = new RegisterRequest(
+            Email: "safelogin@example.com",
+            Password: "SecurePassword123!",
+            FirstName: "Safe",
+            LastName: "User");
+
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        var loginRequest = new LoginRequest(
+            Email: "safelogin@example.com",
+            Password: "SecurePassword123!");
+
+        var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("passwordHash", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("normalizedEmail", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("isActive", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task LoginEndpointWithIncorrectPasswordReturnsUnauthorized()
+    {
+        var registerRequest = new RegisterRequest(
+            Email: "wrongpass@example.com",
+            Password: "CorrectPassword123!",
+            FirstName: "Wrong",
+            LastName: "Pass");
+
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        var loginRequest = new LoginRequest(
+            Email: "wrongpass@example.com",
+            Password: "IncorrectPassword456!");
+
+        var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task LoginEndpointWithUnknownEmailReturnsUnauthorized()
+    {
+        var loginRequest = new LoginRequest(
+            Email: "unknown@example.com",
+            Password: "AnyPassword123!");
+
+        var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task LoginEndpointWithCaseInsensitiveEmailSucceeds()
+    {
+        var registerRequest = new RegisterRequest(
+            Email: "CaseInsensitive@Example.COM",
+            Password: "CorrectPassword123!",
+            FirstName: "Case",
+            LastName: "Insensitive");
+
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        var loginRequest = new LoginRequest(
+            Email: "caseinsensitive@example.com",
+            Password: "CorrectPassword123!");
+
+        var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var result = await response.Content.ReadFromJsonAsync<CustomerResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.Equal("CaseInsensitive@Example.COM", result.Email);
+    }
+
+    [Fact]
+    public async Task LoginEndpointWithInactiveCustomerReturnsUnauthorized()
+    {
+        var registerRequest = new RegisterRequest(
+            Email: "inactive@example.com",
+            Password: "CorrectPassword123!",
+            FirstName: "Inactive",
+            LastName: "User");
+
+        var registerResponse = await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+        Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
+
+        using var scope = factory!.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
+
+        var normalizedEmail = "INACTIVE@EXAMPLE.COM";
+        var customer = await dbContext.Customers.FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedEmail);
+
+        Assert.NotNull(customer);
+
+        customer.IsActive = false;
+
+        dbContext.Customers.Update(customer);
+        await dbContext.SaveChangesAsync();
+
+        var loginRequest = new LoginRequest(
+            Email: "inactive@example.com",
+            Password: "CorrectPassword123!");
+
+        var loginResponse = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, loginResponse.StatusCode);
+        Assert.Equal("application/problem+json", loginResponse.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task LoginEndpoint_InvalidCredentialsDoNotRevealEmailExistence()
+    {
+        var registerRequest = new RegisterRequest(
+            Email: "exists@example.com",
+            Password: "CorrectPassword123!",
+            FirstName: "Exists",
+            LastName: "User");
+
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        var unknownEmailRequest = new LoginRequest(
+            Email: "unknown@example.com",
+            Password: "AnyPassword123!");
+
+        var unknownEmailResponse = await client!.PostAsJsonAsync("/api/auth/login", unknownEmailRequest);
+
+        var wrongPasswordRequest = new LoginRequest(
+            Email: "exists@example.com",
+            Password: "WrongPassword123!");
+
+        var wrongPasswordResponse = await client!.PostAsJsonAsync("/api/auth/login", wrongPasswordRequest);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, unknownEmailResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, wrongPasswordResponse.StatusCode);
+
+        Assert.Equal("application/problem+json", unknownEmailResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("application/problem+json", wrongPasswordResponse.Content.Headers.ContentType?.MediaType);
     }
 
     public async Task DisposeAsync()

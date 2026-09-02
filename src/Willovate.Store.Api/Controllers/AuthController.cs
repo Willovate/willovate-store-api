@@ -6,7 +6,9 @@ namespace Willovate.Store.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class AuthController(ICustomerRegistrationService registrationService) : ControllerBase
+public sealed class AuthController(
+    ICustomerRegistrationService registrationService,
+    ICustomerLoginService loginService) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType<CustomerResponse>(StatusCodes.Status201Created)]
@@ -26,6 +28,27 @@ public sealed class AuthController(ICustomerRegistrationService registrationServ
                 statusCode: StatusCodes.Status409Conflict,
                 title: "Email already registered",
                 detail: ex.Message);
+        }
+    }
+
+    [HttpPost("login")]
+    [ProducesResponseType<CustomerResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<CustomerResponse>> Login(
+        LoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var customerResponse = await loginService.LoginAsync(request, cancellationToken);
+            return Ok(customerResponse);
+        }
+        catch (InvalidOperationException)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Unauthorized",
+                detail: "Invalid email or password.");
         }
     }
 }

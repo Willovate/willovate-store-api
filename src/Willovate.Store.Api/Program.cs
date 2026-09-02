@@ -32,6 +32,7 @@ else
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<ICustomerRegistrationService, CustomerRegistrationService>();
+builder.Services.AddScoped<ICustomerLoginService, CustomerLoginService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
