@@ -1,4 +1,4 @@
-#pragma warning disable CA1707
+﻿#pragma warning disable CA1707
 
 using System.Net;
 using System.Net.Http.Json;
@@ -21,6 +21,10 @@ public sealed class StoreApiTests : IAsyncLifetime
         factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
+            builder.UseSetting("Jwt:Secret", "test-secret-key-must-be-at-least-32-characters-long-for-hs256");
+            builder.UseSetting("Jwt:Issuer", "test-issuer");
+            builder.UseSetting("Jwt:Audience", "test-audience");
+            builder.UseSetting("Jwt:ExpirationMinutes", "60");
         });
 
         client = factory.CreateClient();
@@ -348,3 +352,4 @@ public sealed class StoreApiTests : IAsyncLifetime
 }
 
 #pragma warning restore CA1707
+
