@@ -11,9 +11,9 @@ public sealed class AuthController(
     ICustomerLoginService loginService) : ControllerBase
 {
     [HttpPost("register")]
-    [ProducesResponseType<CustomerResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<AuthResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<CustomerResponse>> Register(
+    public async Task<ActionResult<AuthResponse>> Register(
         RegisterRequest request,
         CancellationToken cancellationToken)
     {

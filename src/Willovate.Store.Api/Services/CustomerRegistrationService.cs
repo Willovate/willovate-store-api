@@ -7,9 +7,10 @@ namespace Willovate.Store.Api.Services;
 
 public sealed class CustomerRegistrationService(
     StoreDbContext dbContext,
-    IPasswordService passwordService) : ICustomerRegistrationService
+    IPasswordService passwordService,
+    IJwtTokenService jwtTokenService) : ICustomerRegistrationService
 {
-    public async Task<CustomerResponse> RegisterAsync(
+    public async Task<AuthResponse> RegisterAsync(
         RegisterRequest request,
         CancellationToken cancellationToken)
     {
@@ -47,7 +48,9 @@ public sealed class CustomerRegistrationService(
         dbContext.Customers.Add(customer);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(customer);
+        var accessToken = jwtTokenService.GenerateToken(customer);
+
+        return new AuthResponse(accessToken, ToResponse(customer));
     }
 
     private static CustomerResponse ToResponse(Customer customer) => new(

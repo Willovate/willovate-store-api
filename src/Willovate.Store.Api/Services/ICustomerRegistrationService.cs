@@ -4,7 +4,7 @@ namespace Willovate.Store.Api.Services;
 
 public interface ICustomerRegistrationService
 {
-    Task<CustomerResponse> RegisterAsync(
+    Task<AuthResponse> RegisterAsync(
         RegisterRequest request,
         CancellationToken cancellationToken);
 }

@@ -1,11 +1,14 @@
-﻿#pragma warning disable CA1707
+#pragma warning disable CA1707
 
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Willovate.Store.Api.Contracts;
 using Willovate.Store.Api.Data;
 
@@ -13,6 +16,9 @@ namespace Willovate.Store.Api.Tests;
 
 public sealed class StoreApiTests : IAsyncLifetime
 {
+    private const string JwtSecret = "test-secret-key-must-be-at-least-32-characters-long-for-hs256";
+    private const string JwtIssuer = "test-issuer";
+    private const string JwtAudience = "test-audience";
     private WebApplicationFactory<Program>? factory;
     private HttpClient? client;
 
@@ -21,9 +27,9 @@ public sealed class StoreApiTests : IAsyncLifetime
         factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
-            builder.UseSetting("Jwt:Secret", "test-secret-key-must-be-at-least-32-characters-long-for-hs256");
-            builder.UseSetting("Jwt:Issuer", "test-issuer");
-            builder.UseSetting("Jwt:Audience", "test-audience");
+            builder.UseSetting("Jwt:Secret", JwtSecret);
+            builder.UseSetting("Jwt:Issuer", JwtIssuer);
+            builder.UseSetting("Jwt:Audience", JwtAudience);
             builder.UseSetting("Jwt:ExpirationMinutes", "60");
         });
 
@@ -64,32 +70,56 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task RegisterEndpoint_SuccessfullyRegistersNewCustomerAndReturnsCreated()
     {
-        var request = new RegisterRequest(
-            Email: "newcustomer@example.com",
-            Password: "SecurePassword123!",
-            FirstName: "John",
-            LastName: "Doe");
-
+        var request = new RegisterRequest("newcustomer@example.com", "SecurePassword123!", "John", "Doe");
         var response = await client!.PostAsJsonAsync("/api/auth/register", request);
-        var result = await response.Content.ReadFromJsonAsync<CustomerResponse>();
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(result);
-        Assert.Equal("newcustomer@example.com", result.Email);
-        Assert.Equal("John", result.FirstName);
-        Assert.Equal("Doe", result.LastName);
-        Assert.NotEqual(Guid.Empty, result.Id);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.Equal("newcustomer@example.com", result.Customer.Email);
+        Assert.Equal("John", result.Customer.FirstName);
+        Assert.Equal("Doe", result.Customer.LastName);
+        Assert.NotEqual(Guid.Empty, result.Customer.Id);
+    }
+
+    [Fact]
+    public async Task RegisterEndpointReturnsValidSignedJwtForCustomer()
+    {
+        var request = new RegisterRequest("jwtregistration@example.com", "SecurePassword123!", "Jwt", "Customer");
+        var response = await client!.PostAsJsonAsync("/api/auth/register", request);
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(result);
+
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSecret)),
+            ValidateIssuer = true,
+            ValidIssuer = JwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = JwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler
+        {
+            MapInboundClaims = false
+        };
+        var principal = tokenHandler.ValidateToken(result.AccessToken, validationParameters, out _);
+
+        Assert.Equal(result.Customer.Id.ToString(), principal.FindFirst("sub")?.Value);
+        Assert.Equal(JwtIssuer, principal.FindFirst("iss")?.Value);
+        Assert.Equal(JwtAudience, principal.FindFirst("aud")?.Value);
     }
 
     [Fact]
     public async Task RegisterEndpointReturnsOnlyCustomerSafeFields()
     {
-        var request = new RegisterRequest(
-            Email: "customer@example.com",
-            Password: "SecurePassword123!",
-            FirstName: "Jane",
-            LastName: "Smith");
-
+        var request = new RegisterRequest("customer@example.com", "SecurePassword123!", "Jane", "Smith");
         var response = await client!.PostAsJsonAsync("/api/auth/register", request);
         var json = await response.Content.ReadAsStringAsync();
 
@@ -97,6 +127,8 @@ public sealed class StoreApiTests : IAsyncLifetime
         Assert.DoesNotContain("passwordHash", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("normalizedEmail", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("isActive", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("accessToken", json);
+        Assert.Contains("customer", json);
         Assert.Contains("id", json);
         Assert.Contains("email", json);
         Assert.Contains("firstName", json);
@@ -107,17 +139,10 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task RegisterEndpointWithDuplicateEmailReturnsConflict()
     {
-        var request = new RegisterRequest(
-            Email: "duplicate@example.com",
-            Password: "SecurePassword123!",
-            FirstName: "First",
-            LastName: "User");
-
-        // Register first customer
+        var request = new RegisterRequest("duplicate@example.com", "SecurePassword123!", "First", "User");
         var firstResponse = await client!.PostAsJsonAsync("/api/auth/register", request);
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
 
-        // Attempt to register with same email
         var secondResponse = await client!.PostAsJsonAsync("/api/auth/register", request);
 
         Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
@@ -127,23 +152,11 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task RegisterEndpointWithDuplicateEmailIsCaseInsensitive()
     {
-        var firstRequest = new RegisterRequest(
-            Email: "casetest@example.com",
-            Password: "SecurePassword123!",
-            FirstName: "First",
-            LastName: "User");
-
-        var secondRequest = new RegisterRequest(
-            Email: "CASETEST@EXAMPLE.COM", // Different casing, same normalized form
-            Password: "AnotherPassword456!",
-            FirstName: "Second",
-            LastName: "User");
-
-        // Register first customer
+        var firstRequest = new RegisterRequest("casetest@example.com", "SecurePassword123!", "First", "User");
+        var secondRequest = new RegisterRequest("CASETEST@EXAMPLE.COM", "AnotherPassword456!", "Second", "User");
         var firstResponse = await client!.PostAsJsonAsync("/api/auth/register", firstRequest);
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
 
-        // Attempt to register with different casing (should still conflict)
         var secondResponse = await client!.PostAsJsonAsync("/api/auth/register", secondRequest);
 
         Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
@@ -152,18 +165,13 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task RegisterEndpointPersistsCustomerToDatabase()
     {
-        var request = new RegisterRequest(
-            Email: "persistent@example.com",
-            Password: "SecurePassword123!",
-            FirstName: "Persist",
-            LastName: "Test");
-
+        var request = new RegisterRequest("persistent@example.com", "SecurePassword123!", "Persist", "Test");
         var response = await client!.PostAsJsonAsync("/api/auth/register", request);
-        var result = await response.Content.ReadFromJsonAsync<CustomerResponse>();
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(result);
 
-        // Verify customer was persisted by attempting duplicate registration
         var duplicateResponse = await client!.PostAsJsonAsync("/api/auth/register", request);
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
     }
@@ -171,18 +179,9 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task LoginEndpoint_SuccessfullyAuthenticatesValidCredentials()
     {
-        var registerRequest = new RegisterRequest(
-            Email: "login@example.com",
-            Password: "CorrectPassword123!",
-            FirstName: "Login",
-            LastName: "User");
-
+        var registerRequest = new RegisterRequest("login@example.com", "CorrectPassword123!", "Login", "User");
         await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
-
-        var loginRequest = new LoginRequest(
-            Email: "login@example.com",
-            Password: "CorrectPassword123!");
-
+        var loginRequest = new LoginRequest("login@example.com", "CorrectPassword123!");
         var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
         var result = await response.Content.ReadFromJsonAsync<CustomerResponse>();
 
@@ -196,18 +195,9 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task LoginEndpointReturnsOnlyCustomerSafeFields()
     {
-        var registerRequest = new RegisterRequest(
-            Email: "safelogin@example.com",
-            Password: "SecurePassword123!",
-            FirstName: "Safe",
-            LastName: "User");
-
+        var registerRequest = new RegisterRequest("safelogin@example.com", "SecurePassword123!", "Safe", "User");
         await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
-
-        var loginRequest = new LoginRequest(
-            Email: "safelogin@example.com",
-            Password: "SecurePassword123!");
-
+        var loginRequest = new LoginRequest("safelogin@example.com", "SecurePassword123!");
         var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
         var json = await response.Content.ReadAsStringAsync();
 
@@ -220,18 +210,9 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task LoginEndpointWithIncorrectPasswordReturnsUnauthorized()
     {
-        var registerRequest = new RegisterRequest(
-            Email: "wrongpass@example.com",
-            Password: "CorrectPassword123!",
-            FirstName: "Wrong",
-            LastName: "Pass");
-
+        var registerRequest = new RegisterRequest("wrongpass@example.com", "CorrectPassword123!", "Wrong", "Pass");
         await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
-
-        var loginRequest = new LoginRequest(
-            Email: "wrongpass@example.com",
-            Password: "IncorrectPassword456!");
-
+        var loginRequest = new LoginRequest("wrongpass@example.com", "IncorrectPassword456!");
         var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -241,11 +222,7 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task LoginEndpointWithUnknownEmailReturnsUnauthorized()
     {
-        var loginRequest = new LoginRequest(
-            Email: "unknown@example.com",
-            Password: "AnyPassword123!");
-
-        var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var response = await client!.PostAsJsonAsync("/api/auth/login", new LoginRequest("unknown@example.com", "AnyPassword123!"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -254,18 +231,9 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task LoginEndpointWithCaseInsensitiveEmailSucceeds()
     {
-        var registerRequest = new RegisterRequest(
-            Email: "CaseInsensitive@Example.COM",
-            Password: "CorrectPassword123!",
-            FirstName: "Case",
-            LastName: "Insensitive");
-
+        var registerRequest = new RegisterRequest("CaseInsensitive@Example.COM", "CorrectPassword123!", "Case", "Insensitive");
         await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
-
-        var loginRequest = new LoginRequest(
-            Email: "caseinsensitive@example.com",
-            Password: "CorrectPassword123!");
-
+        var loginRequest = new LoginRequest("caseinsensitive@example.com", "CorrectPassword123!");
         var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
         var result = await response.Content.ReadFromJsonAsync<CustomerResponse>();
 
@@ -277,33 +245,20 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task LoginEndpointWithInactiveCustomerReturnsUnauthorized()
     {
-        var registerRequest = new RegisterRequest(
-            Email: "inactive@example.com",
-            Password: "CorrectPassword123!",
-            FirstName: "Inactive",
-            LastName: "User");
-
+        var registerRequest = new RegisterRequest("inactive@example.com", "CorrectPassword123!", "Inactive", "User");
         var registerResponse = await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
         Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
 
         using var scope = factory!.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-
-        var normalizedEmail = "INACTIVE@EXAMPLE.COM";
-        var customer = await dbContext.Customers.FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedEmail);
+        var customer = await dbContext.Customers.FirstOrDefaultAsync(c => c.NormalizedEmail == "INACTIVE@EXAMPLE.COM");
 
         Assert.NotNull(customer);
-
         customer.IsActive = false;
-
         dbContext.Customers.Update(customer);
         await dbContext.SaveChangesAsync();
 
-        var loginRequest = new LoginRequest(
-            Email: "inactive@example.com",
-            Password: "CorrectPassword123!");
-
-        var loginResponse = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var loginResponse = await client!.PostAsJsonAsync("/api/auth/login", new LoginRequest("inactive@example.com", "CorrectPassword123!"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, loginResponse.StatusCode);
         Assert.Equal("application/problem+json", loginResponse.Content.Headers.ContentType?.MediaType);
@@ -312,29 +267,13 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task LoginEndpoint_InvalidCredentialsDoNotRevealEmailExistence()
     {
-        var registerRequest = new RegisterRequest(
-            Email: "exists@example.com",
-            Password: "CorrectPassword123!",
-            FirstName: "Exists",
-            LastName: "User");
-
+        var registerRequest = new RegisterRequest("exists@example.com", "CorrectPassword123!", "Exists", "User");
         await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
-
-        var unknownEmailRequest = new LoginRequest(
-            Email: "unknown@example.com",
-            Password: "AnyPassword123!");
-
-        var unknownEmailResponse = await client!.PostAsJsonAsync("/api/auth/login", unknownEmailRequest);
-
-        var wrongPasswordRequest = new LoginRequest(
-            Email: "exists@example.com",
-            Password: "WrongPassword123!");
-
-        var wrongPasswordResponse = await client!.PostAsJsonAsync("/api/auth/login", wrongPasswordRequest);
+        var unknownEmailResponse = await client!.PostAsJsonAsync("/api/auth/login", new LoginRequest("unknown@example.com", "AnyPassword123!"));
+        var wrongPasswordResponse = await client!.PostAsJsonAsync("/api/auth/login", new LoginRequest("exists@example.com", "WrongPassword123!"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, unknownEmailResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, wrongPasswordResponse.StatusCode);
-
         Assert.Equal("application/problem+json", unknownEmailResponse.Content.Headers.ContentType?.MediaType);
         Assert.Equal("application/problem+json", wrongPasswordResponse.Content.Headers.ContentType?.MediaType);
     }
@@ -342,14 +281,11 @@ public sealed class StoreApiTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         client?.Dispose();
-
         if (factory is not null)
         {
             await factory.DisposeAsync();
         }
-
     }
 }
 
 #pragma warning restore CA1707
-
