@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Willovate.Store.Api.Data;
 using Willovate.Store.Api.Services;
 
@@ -27,9 +28,17 @@ else
     var connectionString = builder.Configuration.GetConnectionString("Store")
         ?? throw new InvalidOperationException("Connection string 'Store' is not configured.");
 
-    builder.Services.AddDbContext<StoreDbContext>(options => options.UseNpgsql(connectionString));
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+    dataSourceBuilder.EnableDynamicJson();
+    var dataSource = dataSourceBuilder.Build();
+
+    builder.Services.AddDbContext<StoreDbContext>(options =>
+        options.UseNpgsql(dataSource));
 }
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IWebsiteService, WebsiteService>();
+builder.Services.AddScoped<IPageService, PageService>();
+builder.Services.AddScoped<IPageElementService, PageElementService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -60,6 +69,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 app.UseCors("StoreUi");
 app.MapControllers();
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.MapGet("/api/health", async (StoreDbContext dbContext, CancellationToken cancellationToken) =>
 {
