@@ -69,6 +69,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 app.UseCors("StoreUi");
 app.MapControllers();
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.MapGet("/api/health", async (StoreDbContext dbContext, CancellationToken cancellationToken) =>
 {
