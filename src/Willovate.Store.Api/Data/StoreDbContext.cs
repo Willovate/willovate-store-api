@@ -6,6 +6,7 @@ namespace Willovate.Store.Api.Data;
 public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContext(options)
 {
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<PublicationStatus> PublicationStatuses => Set<PublicationStatus>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,5 +24,8 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
         product.Property(item => item.VisualTheme).HasMaxLength(40);
         product.Property(item => item.Price).HasPrecision(18, 2);
         product.Property(item => item.CompareAtPrice).HasPrecision(18, 2);
+
+        var publicationStatus = modelBuilder.Entity<PublicationStatus>();
+        publicationStatus.HasKey(item => item.Id);
     }
 }

@@ -30,6 +30,7 @@ else
     builder.Services.AddDbContext<StoreDbContext>(options => options.UseNpgsql(connectionString));
 }
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IPublishService, PublishService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
