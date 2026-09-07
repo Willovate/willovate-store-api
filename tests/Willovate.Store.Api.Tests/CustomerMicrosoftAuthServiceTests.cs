@@ -1,7 +1,13 @@
 #pragma warning disable CA1707
 
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using Willovate.Store.Api.Configuration;
 using Willovate.Store.Api.Contracts;
 using Willovate.Store.Api.Data;
@@ -75,6 +81,8 @@ public sealed class CustomerMicrosoftAuthServiceTests
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
+        var exp = expires ?? DateTime.UtcNow.AddHours(1);
+        var notBefore = expires.HasValue ? expires.Value.AddMinutes(-5) : DateTime.UtcNow.AddMinutes(-5);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(
@@ -86,7 +94,8 @@ public sealed class CustomerMicrosoftAuthServiceTests
             ]),
             Issuer = issuer,
             Audience = audience,
-            Expires = expires ?? DateTime.UtcNow.AddHours(1),
+            NotBefore = notBefore,
+            Expires = exp,
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature)
         };
 

@@ -21,6 +21,12 @@ public sealed class PasswordService : IPasswordService
 
     public bool VerifyPassword(string password, string passwordHash)
     {
+        if (string.IsNullOrWhiteSpace(passwordHash) ||
+            passwordHash.StartsWith("EXTERNAL_AUTH_", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
         try
         {
             return passwordHasher.VerifyHashedPassword(PasswordHashingCustomer, passwordHash, password)

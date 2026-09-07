@@ -62,7 +62,20 @@ public sealed class CustomerGoogleAuthService(
             };
 
             dbContext.Customers.Add(customer);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                customer = await dbContext.Customers
+                    .FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedEmail, cancellationToken);
+
+                if (customer is null || !customer.IsActive)
+                {
+                    throw new InvalidOperationException("Invalid Google token.");
+                }
+            }
         }
 
         var accessToken = jwtTokenService.GenerateToken(customer);

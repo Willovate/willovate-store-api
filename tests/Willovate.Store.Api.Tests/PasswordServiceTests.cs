@@ -51,6 +51,18 @@ public sealed class PasswordServiceTests
         Assert.True(passwordService.VerifyPassword(password, firstHash));
         Assert.True(passwordService.VerifyPassword(password, secondHash));
     }
+
+    [Theory]
+    [InlineData("EXTERNAL_AUTH_NO_PASSWORD")]
+    [InlineData("EXTERNAL_AUTH_SOMETHING_ELSE")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void VerifyPassword_ReturnsFalseForSentinelOrInvalidHashes(string passwordHash)
+    {
+        var isValid = passwordService.VerifyPassword("AnyPassword123!", passwordHash);
+
+        Assert.False(isValid);
+    }
 }
 
 #pragma warning restore CA1707

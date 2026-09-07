@@ -46,7 +46,14 @@ public sealed class CustomerRegistrationService(
 
         // Save through DbContext
         dbContext.Customers.Add(customer);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            throw new InvalidOperationException($"Email '{request.Email}' is already registered.");
+        }
 
         var accessToken = jwtTokenService.GenerateToken(customer);
 

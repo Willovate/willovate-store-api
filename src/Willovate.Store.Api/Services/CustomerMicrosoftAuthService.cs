@@ -62,7 +62,20 @@ public sealed class CustomerMicrosoftAuthService(
             };
 
             dbContext.Customers.Add(customer);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                customer = await dbContext.Customers
+                    .FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedEmail, cancellationToken);
+
+                if (customer is null || !customer.IsActive)
+                {
+                    throw new InvalidOperationException("Invalid Microsoft token.");
+                }
+            }
         }
 
         var accessToken = jwtTokenService.GenerateToken(customer);
