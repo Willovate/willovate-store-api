@@ -19,7 +19,16 @@ public sealed class PasswordService : IPasswordService
     public string HashPassword(string password) =>
         passwordHasher.HashPassword(PasswordHashingCustomer, password);
 
-    public bool VerifyPassword(string password, string passwordHash) =>
-        passwordHasher.VerifyHashedPassword(PasswordHashingCustomer, passwordHash, password)
-            != PasswordVerificationResult.Failed;
+    public bool VerifyPassword(string password, string passwordHash)
+    {
+        try
+        {
+            return passwordHasher.VerifyHashedPassword(PasswordHashingCustomer, passwordHash, password)
+                != PasswordVerificationResult.Failed;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
 }

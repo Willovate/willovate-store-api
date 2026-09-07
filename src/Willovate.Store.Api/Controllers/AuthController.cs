@@ -8,7 +8,8 @@ namespace Willovate.Store.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class AuthController(
     ICustomerRegistrationService registrationService,
-    ICustomerLoginService loginService) : ControllerBase
+    ICustomerLoginService loginService,
+    ICustomerGoogleAuthService googleAuthService) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status201Created)]
@@ -49,6 +50,27 @@ public sealed class AuthController(
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Unauthorized",
                 detail: "Invalid email or password.");
+        }
+    }
+
+    [HttpPost("google")]
+    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponse>> Google(
+        GoogleAuthRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var authResponse = await googleAuthService.AuthenticateGoogleUserAsync(request, cancellationToken);
+            return Ok(authResponse);
+        }
+        catch (InvalidOperationException)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Unauthorized",
+                detail: "Invalid Google token.");
         }
     }
 }

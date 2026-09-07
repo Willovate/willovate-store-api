@@ -38,10 +38,13 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<ICustomerRegistrationService, CustomerRegistrationService>();
 builder.Services.AddScoped<ICustomerLoginService, CustomerLoginService>();
+builder.Services.AddScoped<ICustomerGoogleAuthService, CustomerGoogleAuthService>();
+builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
-// Configure JWT options from appsettings
+// Configure options from appsettings
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection("Google"));
 
 // Configure JWT authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"]

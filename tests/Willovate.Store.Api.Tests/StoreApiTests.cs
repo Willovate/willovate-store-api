@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Willovate.Store.Api.Contracts;
 using Willovate.Store.Api.Data;
+using Willovate.Store.Api.Services;
 
 namespace Willovate.Store.Api.Tests;
 
@@ -21,6 +22,7 @@ public sealed class StoreApiTests : IAsyncLifetime
     private const string JwtSecret = "test-secret-key-must-be-at-least-32-characters-long-for-hs256";
     private const string JwtIssuer = "test-issuer";
     private const string JwtAudience = "test-audience";
+    private readonly TestGoogleTokenValidator googleTokenValidator = new();
     private WebApplicationFactory<Program>? factory;
     private HttpClient? client;
 
@@ -33,6 +35,11 @@ public sealed class StoreApiTests : IAsyncLifetime
             builder.UseSetting("Jwt:Issuer", JwtIssuer);
             builder.UseSetting("Jwt:Audience", JwtAudience);
             builder.UseSetting("Jwt:ExpirationMinutes", "60");
+            builder.UseSetting("Google:ClientId", "test-google-client-id");
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton<IGoogleTokenValidator>(googleTokenValidator);
+            });
         });
 
         client = factory.CreateClient();
@@ -392,6 +399,62 @@ public sealed class StoreApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, wrongPasswordResponse.StatusCode);
         Assert.Equal("application/problem+json", unknownEmailResponse.Content.Headers.ContentType?.MediaType);
         Assert.Equal("application/problem+json", wrongPasswordResponse.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task GoogleAuthEndpoint_WithValidToken_RegistersNewCustomerAndReturnsAuthResponse()
+    {
+        googleTokenValidator.AddValidToken("valid-google-token-1", new GoogleUserPayload(
+            Subject: "google-id-1",
+            Email: "googleuser1@example.com",
+            EmailVerified: true,
+            GivenName: "Google",
+            FamilyName: "User1",
+            Name: "Google User1"));
+
+        var response = await client!.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest("valid-google-token-1"));
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.Equal("googleuser1@example.com", result.Customer.Email);
+        Assert.Equal("Google", result.Customer.FirstName);
+        Assert.Equal("User1", result.Customer.LastName);
+    }
+
+    [Fact]
+    public async Task GoogleAuthEndpoint_WithExistingCustomer_AuthenticatesWithoutCreatingDuplicate()
+    {
+        var registerRequest = new RegisterRequest("googleuser2@example.com", "SecurePassword123!", "Existing", "Customer");
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        googleTokenValidator.AddValidToken("valid-google-token-2", new GoogleUserPayload(
+            Subject: "google-id-2",
+            Email: "GOOGLEUSER2@EXAMPLE.COM",
+            EmailVerified: true,
+            GivenName: "Google",
+            FamilyName: "User2",
+            Name: "Google User2"));
+
+        var response = await client!.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest("valid-google-token-2"));
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.Equal("googleuser2@example.com", result.Customer.Email);
+        Assert.Equal("Existing", result.Customer.FirstName);
+        Assert.Equal("Customer", result.Customer.LastName);
+    }
+
+    [Fact]
+    public async Task GoogleAuthEndpoint_WithInvalidToken_ReturnsUnauthorized()
+    {
+        var response = await client!.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest("invalid-token"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
     public async Task DisposeAsync()
