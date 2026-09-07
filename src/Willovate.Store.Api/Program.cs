@@ -40,11 +40,14 @@ builder.Services.AddScoped<ICustomerRegistrationService, CustomerRegistrationSer
 builder.Services.AddScoped<ICustomerLoginService, CustomerLoginService>();
 builder.Services.AddScoped<ICustomerGoogleAuthService, CustomerGoogleAuthService>();
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
+builder.Services.AddScoped<ICustomerMicrosoftAuthService, CustomerMicrosoftAuthService>();
+builder.Services.AddScoped<IMicrosoftTokenValidator, MicrosoftTokenValidator>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 // Configure options from appsettings
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection("Google"));
+builder.Services.Configure<MicrosoftOptions>(builder.Configuration.GetSection("Microsoft"));
 
 // Configure JWT authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"]

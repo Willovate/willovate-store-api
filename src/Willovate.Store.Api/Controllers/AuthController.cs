@@ -9,7 +9,8 @@ namespace Willovate.Store.Api.Controllers;
 public sealed class AuthController(
     ICustomerRegistrationService registrationService,
     ICustomerLoginService loginService,
-    ICustomerGoogleAuthService googleAuthService) : ControllerBase
+    ICustomerGoogleAuthService googleAuthService,
+    ICustomerMicrosoftAuthService microsoftAuthService) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status201Created)]
@@ -71,6 +72,27 @@ public sealed class AuthController(
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Unauthorized",
                 detail: "Invalid Google token.");
+        }
+    }
+
+    [HttpPost("microsoft")]
+    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponse>> Microsoft(
+        MicrosoftAuthRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var authResponse = await microsoftAuthService.AuthenticateMicrosoftUserAsync(request, cancellationToken);
+            return Ok(authResponse);
+        }
+        catch (InvalidOperationException)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Unauthorized",
+                detail: "Invalid Microsoft token.");
         }
     }
 }

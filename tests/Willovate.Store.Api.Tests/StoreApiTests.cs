@@ -23,6 +23,7 @@ public sealed class StoreApiTests : IAsyncLifetime
     private const string JwtIssuer = "test-issuer";
     private const string JwtAudience = "test-audience";
     private readonly TestGoogleTokenValidator googleTokenValidator = new();
+    private readonly TestMicrosoftTokenValidator microsoftTokenValidator = new();
     private WebApplicationFactory<Program>? factory;
     private HttpClient? client;
 
@@ -36,9 +37,11 @@ public sealed class StoreApiTests : IAsyncLifetime
             builder.UseSetting("Jwt:Audience", JwtAudience);
             builder.UseSetting("Jwt:ExpirationMinutes", "60");
             builder.UseSetting("Google:ClientId", "test-google-client-id");
+            builder.UseSetting("Microsoft:ClientId", "test-microsoft-client-id");
             builder.ConfigureServices(services =>
             {
                 services.AddSingleton<IGoogleTokenValidator>(googleTokenValidator);
+                services.AddSingleton<IMicrosoftTokenValidator>(microsoftTokenValidator);
             });
         });
 
@@ -452,6 +455,128 @@ public sealed class StoreApiTests : IAsyncLifetime
     public async Task GoogleAuthEndpoint_WithInvalidToken_ReturnsUnauthorized()
     {
         var response = await client!.PostAsJsonAsync("/api/auth/google", new GoogleAuthRequest("invalid-token"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task MicrosoftAuthEndpoint_WithValidToken_RegistersNewCustomerAndReturnsAuthResponse()
+    {
+        microsoftTokenValidator.AddValidToken("valid-ms-token-1", new MicrosoftUserPayload(
+            Subject: "ms-id-1",
+            Email: "msuser1@example.com",
+            GivenName: "Microsoft",
+            FamilyName: "User1",
+            Name: "Microsoft User1"));
+
+        var response = await client!.PostAsJsonAsync("/api/auth/microsoft", new MicrosoftAuthRequest("valid-ms-token-1"));
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.Equal("msuser1@example.com", result.Customer.Email);
+        Assert.Equal("Microsoft", result.Customer.FirstName);
+        Assert.Equal("User1", result.Customer.LastName);
+    }
+
+    [Fact]
+    public async Task MicrosoftAuthEndpoint_WithExistingCustomer_AuthenticatesWithoutCreatingDuplicate()
+    {
+        var registerRequest = new RegisterRequest("msuser2@example.com", "SecurePassword123!", "Existing", "Customer");
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        microsoftTokenValidator.AddValidToken("valid-ms-token-2", new MicrosoftUserPayload(
+            Subject: "ms-id-2",
+            Email: "MSUSER2@EXAMPLE.COM",
+            GivenName: "Microsoft",
+            FamilyName: "User2",
+            Name: "Microsoft User2"));
+
+        var response = await client!.PostAsJsonAsync("/api/auth/microsoft", new MicrosoftAuthRequest("valid-ms-token-2"));
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.Equal("msuser2@example.com", result.Customer.Email);
+        Assert.Equal("Existing", result.Customer.FirstName);
+        Assert.Equal("Customer", result.Customer.LastName);
+    }
+
+    [Fact]
+    public async Task MicrosoftAuthEndpoint_WithCaseInsensitiveEmail_AuthenticatesSuccessfully()
+    {
+        var registerRequest = new RegisterRequest("msuser3@example.com", "SecurePassword123!", "Case", "User");
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        microsoftTokenValidator.AddValidToken("valid-ms-token-3", new MicrosoftUserPayload(
+            Subject: "ms-id-3",
+            Email: "  MSuser3@Example.Com  ",
+            GivenName: "Case",
+            FamilyName: "User",
+            Name: "Case User"));
+
+        var response = await client!.PostAsJsonAsync("/api/auth/microsoft", new MicrosoftAuthRequest("valid-ms-token-3"));
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.Equal("msuser3@example.com", result.Customer.Email);
+    }
+
+    [Fact]
+    public async Task MicrosoftAuthEndpoint_WithInvalidToken_ReturnsUnauthorized()
+    {
+        var response = await client!.PostAsJsonAsync("/api/auth/microsoft", new MicrosoftAuthRequest("invalid-token"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task MicrosoftAuthEndpoint_WithExpiredToken_ReturnsUnauthorized()
+    {
+        var response = await client!.PostAsJsonAsync("/api/auth/microsoft", new MicrosoftAuthRequest("expired-token"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task MicrosoftAuthEndpoint_WithWrongAudience_ReturnsUnauthorized()
+    {
+        var response = await client!.PostAsJsonAsync("/api/auth/microsoft", new MicrosoftAuthRequest("wrong-audience-token"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task MicrosoftAuthEndpoint_WithInactiveCustomer_ReturnsUnauthorized()
+    {
+        microsoftTokenValidator.AddValidToken("inactive-ms-token", new MicrosoftUserPayload(
+            Subject: "ms-id-inactive",
+            Email: "msinactive@example.com",
+            GivenName: "Inactive",
+            FamilyName: "User",
+            Name: "Inactive User"));
+
+        // First login/register to create account
+        await client!.PostAsJsonAsync("/api/auth/microsoft", new MicrosoftAuthRequest("inactive-ms-token"));
+
+        // Set customer inactive in DB
+        using (var scope = factory!.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
+            var customer = await dbContext.Customers.SingleAsync(c => c.NormalizedEmail == "MSINACTIVE@EXAMPLE.COM");
+            customer.IsActive = false;
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Try authenticating again
+        var response = await client!.PostAsJsonAsync("/api/auth/microsoft", new MicrosoftAuthRequest("inactive-ms-token"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
