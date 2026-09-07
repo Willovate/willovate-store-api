@@ -52,6 +52,70 @@ public sealed class StoreApiTests : IAsyncLifetime
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
+    [Fact]
+    public async Task TemplatesEndpointReturnsSeededClothingStoreTemplates()
+    {
+        var response = await client!.GetAsync("/api/templates?businessType=clothing-store");
+        var templates = await response.Content.ReadFromJsonAsync<IReadOnlyList<TemplateResponse>>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(templates);
+        Assert.NotEmpty(templates);
+        Assert.All(templates, t => Assert.Equal("clothing-store", t.BusinessType));
+    }
+
+    [Fact]
+    public async Task TemplatesEndpointFiltersByTag()
+    {
+        var response = await client!.GetAsync("/api/templates?businessType=clothing-store&tag=Minimal");
+        var templates = await response.Content.ReadFromJsonAsync<IReadOnlyList<TemplateResponse>>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(templates);
+        Assert.NotEmpty(templates);
+        Assert.All(templates, t => Assert.Contains("Minimal", t.Tags));
+    }
+
+    [Fact]
+    public async Task SelectTemplateSuccessfullySavesSelectionAndReturnsWorkspaceUrl()
+    {
+        var templatesResponse = await client!.GetAsync("/api/templates?businessType=clothing-store");
+        var templates = await templatesResponse.Content.ReadFromJsonAsync<IReadOnlyList<TemplateResponse>>();
+        Assert.NotNull(templates);
+        var selected = templates[0];
+
+        var payload = new SelectTemplateRequest(
+            SessionId: "test_session_123",
+            TemplateId: selected.Id,
+            IsBlank: false);
+
+        var response = await client.PostAsJsonAsync("/api/onboarding/select-template", payload);
+        var result = await response.Content.ReadFromJsonAsync<SelectTemplateResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotEmpty(result.ProjectId);
+        Assert.StartsWith("/workspace/", result.NextStepUrl);
+    }
+
+    [Fact]
+    public async Task SelectTemplateWithBlankCanvasSucceeds()
+    {
+        var payload = new SelectTemplateRequest(
+            SessionId: "test_session_blank",
+            TemplateId: null,
+            IsBlank: true);
+
+        var response = await client!.PostAsJsonAsync("/api/onboarding/select-template", payload);
+        var result = await response.Content.ReadFromJsonAsync<SelectTemplateResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.StartsWith("/workspace/", result.NextStepUrl);
+    }
+
     public async Task DisposeAsync()
     {
         client?.Dispose();
@@ -60,6 +124,5 @@ public sealed class StoreApiTests : IAsyncLifetime
         {
             await factory.DisposeAsync();
         }
-
     }
 }

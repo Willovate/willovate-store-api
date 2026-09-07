@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Willovate.Store.Api.Data;
 using Willovate.Store.Api.Services;
 
@@ -27,9 +28,12 @@ else
     var connectionString = builder.Configuration.GetConnectionString("Store")
         ?? throw new InvalidOperationException("Connection string 'Store' is not configured.");
 
-    builder.Services.AddDbContext<StoreDbContext>(options => options.UseNpgsql(connectionString));
+    builder.Services.AddDbContext<StoreDbContext>(options =>
+        options.UseNpgsql(connectionString)
+            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
 }
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ITemplateService, TemplateService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
