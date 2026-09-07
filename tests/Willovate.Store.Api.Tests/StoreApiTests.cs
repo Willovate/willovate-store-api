@@ -2,7 +2,9 @@
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -37,6 +39,28 @@ public sealed class StoreApiTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    private static string GenerateTestJwt(string email = "test@example.com", double expiryMinutes = 60)
+    {
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSecret));
+        var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, email),
+            new Claim("name", "Test User")
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: JwtIssuer,
+            audience: JwtAudience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
     [Fact]
     public async Task HealthEndpointReportsAHealthyService()
     {
@@ -47,9 +71,56 @@ public sealed class StoreApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ProtectedEndpointWithoutTokenReturnsUnauthorized()
+    {
+        var response = await client!.GetAsync("/api/products");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProtectedEndpointWithValidJwtReturnsSuccess()
+    {
+        var token = GenerateTestJwt();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/products");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client!.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProtectedEndpointWithInvalidJwtReturnsUnauthorized()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/products");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "invalid-jwt-token-string");
+
+        var response = await client!.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProtectedEndpointWithExpiredJwtReturnsUnauthorized()
+    {
+        var expiredToken = GenerateTestJwt(expiryMinutes: -10);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/products");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", expiredToken);
+
+        var response = await client!.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ProductsEndpointReturnsSeededFeaturedProducts()
     {
-        var response = await client!.GetAsync("/api/products?featured=true&pageSize=20");
+        var token = GenerateTestJwt();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/products?featured=true&pageSize=20");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client!.SendAsync(request);
         var result = await response.Content.ReadFromJsonAsync<PagedResponse<ProductResponse>>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -61,7 +132,11 @@ public sealed class StoreApiTests : IAsyncLifetime
     [Fact]
     public async Task UnknownProductReturnsProblemDetails()
     {
-        var response = await client!.GetAsync("/api/products/not-a-real-product");
+        var token = GenerateTestJwt();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/products/not-a-real-product");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client!.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);

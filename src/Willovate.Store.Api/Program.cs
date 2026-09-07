@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -98,6 +98,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 app.UseCors("StoreUi");
 app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/api/health", async (StoreDbContext dbContext, CancellationToken cancellationToken) =>
