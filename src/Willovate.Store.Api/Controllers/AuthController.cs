@@ -32,16 +32,16 @@ public sealed class AuthController(
     }
 
     [HttpPost("login")]
-    [ProducesResponseType<CustomerResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<CustomerResponse>> Login(
+    public async Task<ActionResult<AuthResponse>> Login(
         LoginRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            var customerResponse = await loginService.LoginAsync(request, cancellationToken);
-            return Ok(customerResponse);
+            var authResponse = await loginService.LoginAsync(request, cancellationToken);
+            return Ok(authResponse);
         }
         catch (InvalidOperationException)
         {

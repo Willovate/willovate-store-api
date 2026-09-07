@@ -183,13 +183,51 @@ public sealed class StoreApiTests : IAsyncLifetime
         await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
         var loginRequest = new LoginRequest("login@example.com", "CorrectPassword123!");
         var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
-        var result = await response.Content.ReadFromJsonAsync<CustomerResponse>();
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(result);
-        Assert.Equal("login@example.com", result.Email);
-        Assert.Equal("Login", result.FirstName);
-        Assert.Equal("User", result.LastName);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.Equal("login@example.com", result.Customer.Email);
+        Assert.Equal("Login", result.Customer.FirstName);
+        Assert.Equal("User", result.Customer.LastName);
+    }
+
+    [Fact]
+    public async Task LoginEndpointReturnsValidSignedJwtForCustomer()
+    {
+        var registerRequest = new RegisterRequest("jwtlogin@example.com", "SecurePassword123!", "Jwt", "Customer");
+        await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
+        var loginRequest = new LoginRequest("jwtlogin@example.com", "SecurePassword123!");
+        var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSecret)),
+            ValidateIssuer = true,
+            ValidIssuer = JwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = JwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler
+        {
+            MapInboundClaims = false
+        };
+        var principal = tokenHandler.ValidateToken(result.AccessToken, validationParameters, out _);
+
+        Assert.Equal(result.Customer.Id.ToString(), principal.FindFirst("sub")?.Value);
+        Assert.Equal(result.Customer.Email, principal.FindFirst("email")?.Value);
+        Assert.Equal(JwtIssuer, principal.FindFirst("iss")?.Value);
+        Assert.Equal(JwtAudience, principal.FindFirst("aud")?.Value);
     }
 
     [Fact]
@@ -205,6 +243,8 @@ public sealed class StoreApiTests : IAsyncLifetime
         Assert.DoesNotContain("passwordHash", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("normalizedEmail", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("isActive", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("accessToken", json);
+        Assert.Contains("customer", json);
     }
 
     [Fact]
@@ -235,11 +275,12 @@ public sealed class StoreApiTests : IAsyncLifetime
         await client!.PostAsJsonAsync("/api/auth/register", registerRequest);
         var loginRequest = new LoginRequest("caseinsensitive@example.com", "CorrectPassword123!");
         var response = await client!.PostAsJsonAsync("/api/auth/login", loginRequest);
-        var result = await response.Content.ReadFromJsonAsync<CustomerResponse>();
+        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(result);
-        Assert.Equal("CaseInsensitive@Example.COM", result.Email);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.Equal("CaseInsensitive@Example.COM", result.Customer.Email);
     }
 
     [Fact]

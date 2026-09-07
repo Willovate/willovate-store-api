@@ -4,7 +4,7 @@ namespace Willovate.Store.Api.Services;
 
 public interface ICustomerLoginService
 {
-    Task<CustomerResponse> LoginAsync(
+    Task<AuthResponse> LoginAsync(
         LoginRequest request,
         CancellationToken cancellationToken);
 }

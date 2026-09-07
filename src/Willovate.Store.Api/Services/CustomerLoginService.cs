@@ -7,9 +7,10 @@ namespace Willovate.Store.Api.Services;
 
 public sealed class CustomerLoginService(
     StoreDbContext dbContext,
-    IPasswordService passwordService) : ICustomerLoginService
+    IPasswordService passwordService,
+    IJwtTokenService jwtTokenService) : ICustomerLoginService
 {
-    public async Task<CustomerResponse> LoginAsync(
+    public async Task<AuthResponse> LoginAsync(
         LoginRequest request,
         CancellationToken cancellationToken)
     {
@@ -27,7 +28,9 @@ public sealed class CustomerLoginService(
             throw new InvalidOperationException("Invalid email or password.");
         }
 
-        return ToResponse(customer);
+        var accessToken = jwtTokenService.GenerateToken(customer);
+
+        return new AuthResponse(accessToken, ToResponse(customer));
     }
 
     private static CustomerResponse ToResponse(Customer customer) => new(

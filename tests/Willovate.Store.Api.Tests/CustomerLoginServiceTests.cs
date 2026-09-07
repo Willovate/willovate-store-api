@@ -1,6 +1,8 @@
 #pragma warning disable CA1707
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Willovate.Store.Api.Configuration;
 using Willovate.Store.Api.Contracts;
 using Willovate.Store.Api.Data;
 using Willovate.Store.Api.Models;
@@ -10,6 +12,24 @@ namespace Willovate.Store.Api.Tests;
 
 public sealed class CustomerLoginServiceTests
 {
+    private static CustomerLoginService CreateLoginService(
+        StoreDbContext dbContext,
+        IPasswordService passwordService)
+    {
+        var jwtOptions = Options.Create(new JwtOptions
+        {
+            Secret = "test-secret-key-must-be-at-least-32-characters-long-for-hs256",
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+            ExpirationMinutes = 60
+        });
+
+        return new CustomerLoginService(
+            dbContext,
+            passwordService,
+            new JwtTokenService(jwtOptions));
+    }
+
     private static StoreDbContext CreateInMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<StoreDbContext>()
@@ -56,7 +76,7 @@ public sealed class CustomerLoginServiceTests
         await SeedCustomerAsync(dbContext, "alice@example.com", "SecurePassword123!");
 
         var passwordService = new PasswordService();
-        var loginService = new CustomerLoginService(dbContext, passwordService);
+        var loginService = CreateLoginService(dbContext, passwordService);
 
         var request = new LoginRequest(Email: "alice@example.com", Password: "SecurePassword123!");
 
@@ -64,10 +84,12 @@ public sealed class CustomerLoginServiceTests
         var response = await loginService.LoginAsync(request, CancellationToken.None);
 
         // Assert
-        Assert.NotEqual(Guid.Empty, response.Id);
-        Assert.Equal("alice@example.com", response.Email);
-        Assert.Equal("Test", response.FirstName);
-        Assert.Equal("User", response.LastName);
+        Assert.IsType<AuthResponse>(response);
+        Assert.NotEmpty(response.AccessToken);
+        Assert.NotEqual(Guid.Empty, response.Customer.Id);
+        Assert.Equal("alice@example.com", response.Customer.Email);
+        Assert.Equal("Test", response.Customer.FirstName);
+        Assert.Equal("User", response.Customer.LastName);
     }
 
     [Fact]
@@ -78,7 +100,7 @@ public sealed class CustomerLoginServiceTests
         await SeedCustomerAsync(dbContext, "CaseSensitive@Example.COM", "CorrectPassword123!");
 
         var passwordService = new PasswordService();
-        var loginService = new CustomerLoginService(dbContext, passwordService);
+        var loginService = CreateLoginService(dbContext, passwordService);
 
         // Request with different casing
         var request = new LoginRequest(Email: "  casesensitive@example.com  ", Password: "CorrectPassword123!");
@@ -87,7 +109,8 @@ public sealed class CustomerLoginServiceTests
         var response = await loginService.LoginAsync(request, CancellationToken.None);
 
         // Assert
-        Assert.Equal("CaseSensitive@Example.COM", response.Email);
+        Assert.NotEmpty(response.AccessToken);
+        Assert.Equal("CaseSensitive@Example.COM", response.Customer.Email);
     }
 
     [Fact]
@@ -98,7 +121,7 @@ public sealed class CustomerLoginServiceTests
         await SeedCustomerAsync(dbContext);
 
         var passwordService = new PasswordService();
-        var loginService = new CustomerLoginService(dbContext, passwordService);
+        var loginService = CreateLoginService(dbContext, passwordService);
 
         var request = new LoginRequest(Email: "unknown@example.com", Password: "CorrectPassword123!");
 
@@ -117,7 +140,7 @@ public sealed class CustomerLoginServiceTests
         await SeedCustomerAsync(dbContext, "bob@example.com", "CorrectPassword123!");
 
         var passwordService = new PasswordService();
-        var loginService = new CustomerLoginService(dbContext, passwordService);
+        var loginService = CreateLoginService(dbContext, passwordService);
 
         var request = new LoginRequest(Email: "bob@example.com", Password: "IncorrectPassword456!");
 
@@ -136,7 +159,7 @@ public sealed class CustomerLoginServiceTests
         await SeedCustomerAsync(dbContext, "inactive@example.com", "CorrectPassword123!", isActive: false);
 
         var passwordService = new PasswordService();
-        var loginService = new CustomerLoginService(dbContext, passwordService);
+        var loginService = CreateLoginService(dbContext, passwordService);
 
         var request = new LoginRequest(Email: "inactive@example.com", Password: "CorrectPassword123!");
 
@@ -155,7 +178,7 @@ public sealed class CustomerLoginServiceTests
         await SeedCustomerAsync(dbContext, "exists@example.com", "CorrectPassword123!");
 
         var passwordService = new PasswordService();
-        var loginService = new CustomerLoginService(dbContext, passwordService);
+        var loginService = CreateLoginService(dbContext, passwordService);
 
         var unknownEmailRequest = new LoginRequest(Email: "unknown@example.com", Password: "AnyPassword123!");
         var wrongPasswordRequest = new LoginRequest(Email: "exists@example.com", Password: "WrongPassword123!");
@@ -181,7 +204,7 @@ public sealed class CustomerLoginServiceTests
         await SeedCustomerAsync(dbContext, "verify@example.com", password);
 
         var passwordService = new PasswordService();
-        var loginService = new CustomerLoginService(dbContext, passwordService);
+        var loginService = CreateLoginService(dbContext, passwordService);
 
         var request = new LoginRequest(Email: "verify@example.com", Password: password);
 
@@ -190,7 +213,8 @@ public sealed class CustomerLoginServiceTests
 
         // Assert - successful login proves password was verified by PasswordService
         Assert.NotNull(response);
-        Assert.Equal("verify@example.com", response.Email);
+        Assert.NotEmpty(response.AccessToken);
+        Assert.Equal("verify@example.com", response.Customer.Email);
     }
 
     [Fact]
@@ -201,17 +225,19 @@ public sealed class CustomerLoginServiceTests
         await SeedCustomerAsync(dbContext, "secure@example.com", "CorrectPassword123!");
 
         var passwordService = new PasswordService();
-        var loginService = new CustomerLoginService(dbContext, passwordService);
+        var loginService = CreateLoginService(dbContext, passwordService);
 
         var request = new LoginRequest(Email: "secure@example.com", Password: "CorrectPassword123!");
 
         // Act
         var response = await loginService.LoginAsync(request, CancellationToken.None);
 
-        // Assert - CustomerResponse record does not contain sensitive fields
-        Assert.IsType<CustomerResponse>(response);
+        // Assert - AuthResponse record contains CustomerResponse without sensitive fields
+        Assert.IsType<AuthResponse>(response);
+        Assert.NotEmpty(response.AccessToken);
+        Assert.Equal("secure@example.com", response.Customer.Email);
 
-        var responseType = response.GetType();
+        var responseType = response.Customer.GetType();
         Assert.Null(responseType.GetProperty("PasswordHash"));
         Assert.Null(responseType.GetProperty("NormalizedEmail"));
         Assert.Null(responseType.GetProperty("IsActive"));
