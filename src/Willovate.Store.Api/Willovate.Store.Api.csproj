@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
+    <UserSecretsId>willovate-store-api-dev</UserSecretsId>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>false</InvariantGlobalization>
