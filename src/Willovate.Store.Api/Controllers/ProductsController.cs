@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Willovate.Store.Api.Contracts;
 using Willovate.Store.Api.Services;
 
 namespace Willovate.Store.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public sealed class ProductsController(IProductService productService) : ControllerBase
