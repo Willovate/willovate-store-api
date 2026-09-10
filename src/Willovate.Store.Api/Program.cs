@@ -39,6 +39,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IWebsiteService, WebsiteService>();
 builder.Services.AddScoped<IPageService, PageService>();
 builder.Services.AddScoped<IPageElementService, PageElementService>();
+builder.Services.AddScoped<IAiService, AiService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
