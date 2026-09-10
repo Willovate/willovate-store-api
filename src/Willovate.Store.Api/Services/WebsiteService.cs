@@ -11,7 +11,8 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
     {
         var website = await dbContext.Websites
             .AsNoTracking()
-            .Include(w => w.Pages)
+            .Include(w => w.Themes)
+            .ThenInclude(t => t.Pages)
             .ThenInclude(p => p.Elements)
             .FirstOrDefaultAsync(w => w.Id == websiteId, cancellationToken);
 
@@ -22,7 +23,8 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
     {
         var websites = await dbContext.Websites
             .AsNoTracking()
-            .Include(w => w.Pages)
+            .Include(w => w.Themes)
+            .ThenInclude(t => t.Pages)
             .ThenInclude(p => p.Elements)
             .OrderByDescending(w => w.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -53,7 +55,8 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
     public async Task<WebsiteResponse> UpdateWebsiteAsync(Guid websiteId, UpdateWebsiteRequest request, CancellationToken cancellationToken)
     {
         var website = await dbContext.Websites
-            .Include(w => w.Pages)
+            .Include(w => w.Themes)
+            .ThenInclude(t => t.Pages)
             .ThenInclude(p => p.Elements)
             .FirstOrDefaultAsync(w => w.Id == websiteId, cancellationToken)
             ?? throw new KeyNotFoundException($"Website {websiteId} not found");
@@ -96,12 +99,21 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
             website.IsPublished,
             website.CreatedAt,
             website.UpdatedAt,
-            website.Pages.OrderBy(p => p.DisplayOrder).Select(PageToResponse).ToList());
+            website.Themes.Select(ThemeToResponse).ToList());
+
+    private static ThemeResponse ThemeToResponse(Theme theme) =>
+        new(
+            theme.Id,
+            theme.WebsiteId,
+            theme.Name,
+            theme.IsLive,
+            theme.LastEdited,
+            theme.Pages.OrderBy(p => p.DisplayOrder).Select(PageToResponse).ToList());
 
     private static PageResponse PageToResponse(Page page) =>
         new(
             page.Id,
-            page.WebsiteId,
+            page.ThemeId,
             page.Title,
             page.Slug,
             page.Description,

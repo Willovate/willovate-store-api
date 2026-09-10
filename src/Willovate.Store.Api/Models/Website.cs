@@ -12,5 +12,5 @@ public sealed class Website
     public bool IsPublished { get; set; }
 
     // Navigation
-    public ICollection<Page> Pages { get; } = [];
+    public ICollection<Theme> Themes { get; set; } = new List<Theme>();
 }

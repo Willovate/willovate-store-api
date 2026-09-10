@@ -8,6 +8,7 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
 {
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Website> Websites => Set<Website>();
+    public DbSet<Theme> Themes => Set<Theme>();
     public DbSet<Page> Pages => Set<Page>();
     public DbSet<PageElement> PageElements => Set<PageElement>();
 
@@ -36,12 +37,19 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
         website.Property(item => item.Description).HasMaxLength(1_000);
         website.Property(item => item.TemplateId).HasMaxLength(100);
         website.Property(item => item.ThemeColor).HasMaxLength(20);
-        website.HasMany(item => item.Pages).WithOne(item => item.Website).HasForeignKey(item => item.WebsiteId).OnDelete(DeleteBehavior.Cascade);
+        website.HasMany(item => item.Themes).WithOne(item => item.Website).HasForeignKey(item => item.WebsiteId).OnDelete(DeleteBehavior.Cascade);
+
+        // Theme Configuration
+        var theme = modelBuilder.Entity<Theme>();
+        theme.HasKey(item => item.Id);
+        theme.HasIndex(item => item.WebsiteId);
+        theme.Property(item => item.Name).HasMaxLength(200);
+        theme.HasMany(item => item.Pages).WithOne(item => item.Theme).HasForeignKey(item => item.ThemeId).OnDelete(DeleteBehavior.Cascade);
 
         // Page Configuration
         var page = modelBuilder.Entity<Page>();
         page.HasKey(item => item.Id);
-        page.HasIndex(item => new { item.WebsiteId, item.Slug }).IsUnique();
+        page.HasIndex(item => new { item.ThemeId, item.Slug }).IsUnique();
         page.Property(item => item.Title).HasMaxLength(200);
         page.Property(item => item.Slug).HasMaxLength(120);
         page.Property(item => item.Description).HasMaxLength(1_000);

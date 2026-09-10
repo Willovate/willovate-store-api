@@ -11,14 +11,25 @@ public interface IWebsiteService
     Task DeleteWebsiteAsync(Guid websiteId, CancellationToken cancellationToken);
 }
 
+public interface IThemeService
+{
+    Task<ThemeResponse?> GetThemeAsync(Guid themeId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ThemeResponse>> GetThemesByWebsiteAsync(Guid websiteId, CancellationToken cancellationToken);
+    Task<ThemeResponse> CreateThemeAsync(Guid websiteId, CreateThemeRequest request, CancellationToken cancellationToken);
+    Task<ThemeResponse> UpdateThemeAsync(Guid themeId, UpdateThemeRequest request, CancellationToken cancellationToken);
+    Task DeleteThemeAsync(Guid themeId, CancellationToken cancellationToken);
+    Task<ThemeResponse> PublishThemeAsync(Guid themeId, CancellationToken cancellationToken);
+    Task<ThemeResponse> DuplicateThemeAsync(Guid themeId, CancellationToken cancellationToken);
+}
+
 public interface IPageService
 {
     Task<PageResponse?> GetPageAsync(Guid pageId, CancellationToken cancellationToken);
-    Task<IReadOnlyList<PageResponse>> GetPagesByWebsiteAsync(Guid websiteId, CancellationToken cancellationToken);
-    Task<PageResponse> CreatePageAsync(Guid websiteId, CreatePageRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<PageResponse>> GetPagesByThemeAsync(Guid themeId, CancellationToken cancellationToken);
+    Task<PageResponse> CreatePageAsync(Guid themeId, CreatePageRequest request, CancellationToken cancellationToken);
     Task<PageResponse> UpdatePageAsync(Guid pageId, UpdatePageRequest request, CancellationToken cancellationToken);
     Task DeletePageAsync(Guid pageId, CancellationToken cancellationToken);
-    Task<PageResponse> GetPageBySlugAsync(Guid websiteId, string slug, CancellationToken cancellationToken);
+    Task<PageResponse> GetPageBySlugAsync(Guid themeId, string slug, CancellationToken cancellationToken);
 }
 
 public interface IPageElementService

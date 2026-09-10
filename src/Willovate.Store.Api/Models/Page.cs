@@ -3,7 +3,7 @@ namespace Willovate.Store.Api.Models;
 public sealed class Page
 {
     public Guid Id { get; init; }
-    public Guid WebsiteId { get; set; }
+    public Guid ThemeId { get; set; }
     public required string Title { get; set; }
     public required string Slug { get; set; }
     public string? Description { get; set; }
@@ -14,6 +14,6 @@ public sealed class Page
     public DateTimeOffset UpdatedAt { get; set; }
 
     // Navigation
-    public Website? Website { get; set; }
+    public Theme? Theme { get; set; }
     public ICollection<PageElement> Elements { get; } = [];
 }

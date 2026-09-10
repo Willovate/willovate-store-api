@@ -19,28 +19,28 @@ public sealed class PageService(StoreDbContext dbContext) : IPageService
         return page is null ? null : ToResponse(page);
     }
 
-    public async Task<IReadOnlyList<PageResponse>> GetPagesByWebsiteAsync(Guid websiteId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<PageResponse>> GetPagesByThemeAsync(Guid themeId, CancellationToken cancellationToken)
     {
         var pages = await dbContext.Pages
             .AsNoTracking()
             .Include(p => p.Elements)
-            .Where(p => p.WebsiteId == websiteId)
+            .Where(p => p.ThemeId == themeId)
             .OrderBy(p => p.DisplayOrder)
             .ToListAsync(cancellationToken);
 
         return pages.ConvertAll(ToResponse);
     }
 
-    public async Task<PageResponse> CreatePageAsync(Guid websiteId, CreatePageRequest request, CancellationToken cancellationToken)
+    public async Task<PageResponse> CreatePageAsync(Guid themeId, CreatePageRequest request, CancellationToken cancellationToken)
     {
-        // Verify website exists
-        var websiteExists = await dbContext.Websites.AnyAsync(w => w.Id == websiteId, cancellationToken);
-        if (!websiteExists)
-            throw new KeyNotFoundException($"Website {websiteId} not found");
+        // Verify theme exists
+        var themeExists = await dbContext.Themes.AnyAsync(t => t.Id == themeId, cancellationToken);
+        if (!themeExists)
+            throw new KeyNotFoundException($"Theme {themeId} not found");
 
-        // Check for duplicate slug within the website
+        // Check for duplicate slug within the theme
         var slugExists = await dbContext.Pages.AnyAsync(
-            p => p.WebsiteId == websiteId && p.Slug == request.Slug.ToLowerInvariant(),
+            p => p.ThemeId == themeId && p.Slug == request.Slug.ToLowerInvariant(),
             cancellationToken);
         if (slugExists)
             throw new InvalidOperationException($"A page with slug '{request.Slug}' already exists in this website");
@@ -48,7 +48,7 @@ public sealed class PageService(StoreDbContext dbContext) : IPageService
         var page = new Page
         {
             Id = Guid.NewGuid(),
-            WebsiteId = websiteId,
+            ThemeId = themeId,
             Title = request.Title,
             Slug = request.Slug.ToLowerInvariant(),
             Description = request.Description,
@@ -79,10 +79,10 @@ public sealed class PageService(StoreDbContext dbContext) : IPageService
         {
             var newSlug = request.Slug.ToLowerInvariant();
             var slugExists = await dbContext.Pages.AnyAsync(
-                p => p.WebsiteId == page.WebsiteId && p.Slug == newSlug && p.Id != pageId,
+                p => p.ThemeId == page.ThemeId && p.Slug == newSlug && p.Id != pageId,
                 cancellationToken);
             if (slugExists)
-                throw new InvalidOperationException($"A page with slug '{newSlug}' already exists in this website");
+                throw new InvalidOperationException($"A page with slug '{newSlug}' already exists in this theme");
             page.Slug = newSlug;
         }
 
@@ -114,15 +114,15 @@ public sealed class PageService(StoreDbContext dbContext) : IPageService
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<PageResponse> GetPageBySlugAsync(Guid websiteId, string slug, CancellationToken cancellationToken)
+    public async Task<PageResponse> GetPageBySlugAsync(Guid themeId, string slug, CancellationToken cancellationToken)
     {
         var page = await dbContext.Pages
             .AsNoTracking()
             .Include(p => p.Elements)
             .FirstOrDefaultAsync(
-                p => p.WebsiteId == websiteId && p.Slug == slug.ToLowerInvariant(),
+                p => p.ThemeId == themeId && p.Slug == slug.ToLowerInvariant(),
                 cancellationToken)
-            ?? throw new KeyNotFoundException($"Page with slug '{slug}' not found in website {websiteId}");
+            ?? throw new KeyNotFoundException($"Page with slug '{slug}' not found in theme {themeId}");
 
         return ToResponse(page);
     }
@@ -130,7 +130,7 @@ public sealed class PageService(StoreDbContext dbContext) : IPageService
     private static PageResponse ToResponse(Page page) =>
         new(
             page.Id,
-            page.WebsiteId,
+            page.ThemeId,
             page.Title,
             page.Slug,
             page.Description,

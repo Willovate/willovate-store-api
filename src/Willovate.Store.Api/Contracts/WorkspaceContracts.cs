@@ -9,11 +9,19 @@ public sealed record WebsiteResponse(
     bool IsPublished,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
+    IReadOnlyList<ThemeResponse> Themes);
+
+public sealed record ThemeResponse(
+    Guid Id,
+    Guid WebsiteId,
+    string Name,
+    bool IsLive,
+    DateTime LastEdited,
     IReadOnlyList<PageResponse> Pages);
 
 public sealed record PageResponse(
     Guid Id,
-    Guid WebsiteId,
+    Guid ThemeId,
     string Title,
     string Slug,
     string? Description,
@@ -48,6 +56,14 @@ public sealed record UpdateWebsiteRequest(
     string? Description = null,
     string? ThemeColor = null,
     bool? IsPublished = null);
+
+public sealed record CreateThemeRequest(
+    string Name,
+    bool DuplicateFromLive = false);
+
+public sealed record UpdateThemeRequest(
+    string? Name = null,
+    bool? IsLive = null);
 
 public sealed record CreatePageRequest(
     string Title,

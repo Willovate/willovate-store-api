@@ -44,13 +44,24 @@ public static class SeedData
                 UpdatedAt = createdAt
             };
 
+            var themeId = Guid.NewGuid();
+            var theme = new Theme
+            {
+                Id = themeId,
+                WebsiteId = DefaultWebsiteId,
+                Name = "Dawn Theme",
+                IsLive = true,
+                LastEdited = createdAt.UtcDateTime
+            };
+
             dbContext.Websites.Add(website);
+            dbContext.Themes.Add(theme);
 
             dbContext.Pages.AddRange(
                 new Page
                 {
                     Id = homePageId,
-                    WebsiteId = DefaultWebsiteId,
+                    ThemeId = themeId,
                     Title = "Home",
                     Slug = "home",
                     Description = "The store landing page",
@@ -63,8 +74,8 @@ public static class SeedData
                 new Page
                 {
                     Id = aboutPageId,
-                    WebsiteId = DefaultWebsiteId,
-                    Title = "About",
+                    ThemeId = themeId,
+                    Title = "About Us",
                     Slug = "about",
                     Description = "Tell visitors about your brand",
                     DisplayOrder = 1,
