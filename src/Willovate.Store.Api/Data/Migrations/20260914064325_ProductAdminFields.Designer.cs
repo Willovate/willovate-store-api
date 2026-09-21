@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Willovate.Store.Api.Data;
@@ -11,9 +12,11 @@ using Willovate.Store.Api.Data;
 namespace Willovate.Store.Api.Data.Migrations
 {
     [DbContext(typeof(StoreDbContext))]
-    partial class StoreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914064325_ProductAdminFields")]
+    partial class ProductAdminFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,13 +33,13 @@ namespace Willovate.Store.Api.Data.Migrations
 
                     b.Property<string>("Category")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<string>("CategoryKey")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<decimal?>("CompareAtPrice")
                         .HasPrecision(18, 2)
@@ -47,8 +50,8 @@ namespace Willovate.Store.Api.Data.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(50000)
-                        .HasColumnType("character varying(50000)");
+                        .HasMaxLength(1200)
+                        .HasColumnType("character varying(1200)");
 
                     b.Property<string>("ImageUrls")
                         .IsRequired()
@@ -83,8 +86,8 @@ namespace Willovate.Store.Api.Data.Migrations
 
                     b.Property<string>("SearchText")
                         .IsRequired()
-                        .HasMaxLength(5000)
-                        .HasColumnType("character varying(5000)");
+                        .HasMaxLength(1500)
+                        .HasColumnType("character varying(1500)");
 
                     b.Property<string>("Sku")
                         .HasMaxLength(120)
@@ -106,8 +109,8 @@ namespace Willovate.Store.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Variants")
-                        .HasMaxLength(100000)
-                        .HasColumnType("character varying(100000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<string>("VisualTheme")
                         .IsRequired()

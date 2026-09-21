@@ -5,8 +5,11 @@ using Willovate.Store.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
+
 builder.Services.AddControllers();
+
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new()
@@ -25,27 +28,59 @@ if (builder.Environment.IsEnvironment("Testing"))
 else
 {
     var connectionString = builder.Configuration.GetConnectionString("Store")
-        ?? throw new InvalidOperationException("Connection string 'Store' is not configured.");
+        ?? throw new InvalidOperationException(
+            "Connection string 'Store' is not configured.");
 
-    builder.Services.AddDbContext<StoreDbContext>(options => options.UseNpgsql(connectionString));
+    builder.Services.AddDbContext<StoreDbContext>(options =>
+        options.UseNpgsql(connectionString));
 }
+
 builder.Services.AddScoped<IProductService, ProductService>();
+
+
+// =====================================================
+// CORS CONFIGURATION
+// =====================================================
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>() ?? ["http://localhost:5173"];
+    .Get<string[]>();
+
+// If Cors:AllowedOrigins is not configured,
+// allow both Vite development ports.
+if (allowedOrigins == null || allowedOrigins.Length == 0)
+{
+    allowedOrigins =
+    [
+        "http://localhost:5173",
+        "http://localhost:5174"
+    ];
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("StoreUi", policy =>
-        policy.WithOrigins(allowedOrigins)
+    {
+        policy
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod();
+    });
 });
+
+
+// =====================================================
+// BUILD APPLICATION
+// =====================================================
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
+
+
+// =====================================================
+// SWAGGER
+// =====================================================
 
 if (app.Environment.IsDevelopment())
 {
@@ -53,35 +88,93 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
+// =====================================================
+// HTTPS
+// =====================================================
+
 if (!app.Environment.IsEnvironment("Testing"))
 {
     app.UseHttpsRedirection();
 }
 
+
+// =====================================================
+// CORS
+// =====================================================
+
 app.UseCors("StoreUi");
+
+
+// =====================================================
+// STATIC FILES
+// =====================================================
+
+app.UseStaticFiles();
+
+
+// =====================================================
+// CONTROLLERS
+// =====================================================
+
 app.MapControllers();
 
-app.MapGet("/api/health", async (StoreDbContext dbContext, CancellationToken cancellationToken) =>
-{
-    var databaseAvailable = await dbContext.Database.CanConnectAsync(cancellationToken);
 
-    return Results.Ok(new
+// =====================================================
+// HEALTH CHECK
+// =====================================================
+
+app.MapGet(
+    "/api/health",
+    async (
+        StoreDbContext dbContext,
+        CancellationToken cancellationToken) =>
     {
-        status = databaseAvailable ? "healthy" : "degraded",
-        service = "willovate-store-api",
-        timestamp = DateTimeOffset.UtcNow
-    });
-})
-.WithName("Health")
-.WithTags("Health");
+        var databaseAvailable =
+            await dbContext.Database.CanConnectAsync(cancellationToken);
+
+        return Results.Ok(new
+        {
+            status = databaseAvailable ? "healthy" : "degraded",
+            service = "willovate-store-api",
+            timestamp = DateTimeOffset.UtcNow
+        });
+    })
+    .WithName("Health")
+    .WithTags("Health");
+
+
+// =====================================================
+// UPLOADS DIRECTORY
+// =====================================================
+
+EnsureUploadsDirectory(app.Environment);
+
+
+// =====================================================
+// DATABASE INITIALIZATION
+// =====================================================
 
 await InitialiseDatabaseAsync(app);
+
+
+// =====================================================
+// RUN APPLICATION
+// =====================================================
+
 await app.RunAsync();
+
+
+// =====================================================
+// DATABASE INITIALIZATION METHOD
+// =====================================================
 
 static async Task InitialiseDatabaseAsync(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
+
+    var dbContext =
+        scope.ServiceProvider.GetRequiredService<StoreDbContext>();
 
     if (dbContext.Database.IsRelational())
     {
@@ -94,5 +187,26 @@ static async Task InitialiseDatabaseAsync(WebApplication app)
 
     await SeedData.InitialiseAsync(dbContext);
 }
+
+
+// =====================================================
+// UPLOAD DIRECTORY METHOD
+// =====================================================
+
+static void EnsureUploadsDirectory(IWebHostEnvironment env)
+{
+    var webRoot =
+        env.WebRootPath ??
+        Path.Combine(env.ContentRootPath, "wwwroot");
+
+    var uploadsPath =
+        Path.Combine(
+            webRoot,
+            "uploads",
+            "products");
+
+    Directory.CreateDirectory(uploadsPath);
+}
+
 
 public partial class Program;

@@ -10,4 +10,13 @@ public sealed record ProductResponse(
     decimal? CompareAtPrice,
     int StockQuantity,
     string VisualTheme,
-    bool IsFeatured);
+    bool IsFeatured,
+    // Admin fields
+    bool IsActive,
+    string? Sku,
+    string? ProductType,
+    string? Tags,
+    int LowStockAlert,
+    IReadOnlyList<string> ImageUrls,
+    string? Variants,
+    DateTimeOffset UpdatedAt);
