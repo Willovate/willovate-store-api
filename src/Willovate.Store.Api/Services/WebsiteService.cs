@@ -107,6 +107,8 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
             theme.WebsiteId,
             theme.Name,
             theme.IsLive,
+            theme.Price,
+            theme.ThumbnailUrl,
             theme.LastEdited,
             theme.Pages.OrderBy(p => p.DisplayOrder).Select(PageToResponse).ToList());
 

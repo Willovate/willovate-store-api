@@ -6,6 +6,8 @@ public class Theme
     public Guid WebsiteId { get; set; }
     public string Name { get; set; } = string.Empty;
     public bool IsLive { get; set; }
+    public decimal Price { get; set; }
+    public string? ThumbnailUrl { get; set; }
     public DateTime LastEdited { get; set; }
 
     // Navigation properties

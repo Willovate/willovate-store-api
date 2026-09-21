@@ -16,6 +16,8 @@ public sealed record ThemeResponse(
     Guid WebsiteId,
     string Name,
     bool IsLive,
+    decimal Price,
+    string? ThumbnailUrl,
     DateTime LastEdited,
     IReadOnlyList<PageResponse> Pages);
 
@@ -59,11 +61,15 @@ public sealed record UpdateWebsiteRequest(
 
 public sealed record CreateThemeRequest(
     string Name,
+    decimal Price = 0m,
+    string? ThumbnailUrl = null,
     bool DuplicateFromLive = false);
 
 public sealed record UpdateThemeRequest(
     string? Name = null,
-    bool? IsLive = null);
+    bool? IsLive = null,
+    decimal? Price = null,
+    string? ThumbnailUrl = null);
 
 public sealed record CreatePageRequest(
     string Title,

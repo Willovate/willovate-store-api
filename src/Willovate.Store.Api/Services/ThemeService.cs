@@ -43,6 +43,8 @@ public sealed class ThemeService(StoreDbContext dbContext) : IThemeService
             WebsiteId = websiteId,
             Name = request.Name,
             IsLive = false,
+            Price = request.Price,
+            ThumbnailUrl = request.ThumbnailUrl,
             LastEdited = DateTime.UtcNow
         };
 
@@ -124,6 +126,12 @@ public sealed class ThemeService(StoreDbContext dbContext) : IThemeService
         if (request.IsLive.HasValue)
             theme.IsLive = request.IsLive.Value;
 
+        if (request.Price.HasValue)
+            theme.Price = request.Price.Value;
+
+        if (request.ThumbnailUrl is not null)
+            theme.ThumbnailUrl = request.ThumbnailUrl;
+
         theme.LastEdited = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -153,17 +161,26 @@ public sealed class ThemeService(StoreDbContext dbContext) : IThemeService
             .FirstOrDefaultAsync(t => t.Id == themeId, cancellationToken)
             ?? throw new KeyNotFoundException($"Theme {themeId} not found");
 
-        var websiteThemes = await dbContext.Themes
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        // Reset IsLive for all themes in this website
+        await dbContext.Themes
             .Where(t => t.WebsiteId == theme.WebsiteId)
-            .ToListAsync(cancellationToken);
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsLive, false), cancellationToken);
 
-        foreach (var t in websiteThemes)
-        {
-            t.IsLive = (t.Id == themeId);
-        }
+        // Set the chosen theme to live and update its edited timestamp
+        var now = DateTime.UtcNow;
+        await dbContext.Themes
+            .Where(t => t.Id == themeId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.IsLive, true)
+                .SetProperty(x => x.LastEdited, now), cancellationToken);
 
-        theme.LastEdited = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        // Update the tracked entity so the response is correct
+        theme.IsLive = true;
+        theme.LastEdited = now;
 
         return ToResponse(theme);
     }
@@ -176,7 +193,7 @@ public sealed class ThemeService(StoreDbContext dbContext) : IThemeService
             .FirstOrDefaultAsync(t => t.Id == themeId, cancellationToken)
             ?? throw new KeyNotFoundException($"Theme {themeId} not found");
 
-        return await CreateThemeAsync(theme.WebsiteId, new CreateThemeRequest($"{theme.Name} (Copy)", true), cancellationToken);
+        return await CreateThemeAsync(theme.WebsiteId, new CreateThemeRequest($"{theme.Name} (Copy)", DuplicateFromLive: true), cancellationToken);
     }
 
     private static ThemeResponse ToResponse(Theme theme) =>
@@ -185,6 +202,8 @@ public sealed class ThemeService(StoreDbContext dbContext) : IThemeService
             theme.WebsiteId,
             theme.Name,
             theme.IsLive,
+            theme.Price,
+            theme.ThumbnailUrl,
             theme.LastEdited,
             theme.Pages?.OrderBy(p => p.DisplayOrder).Select(PageToResponse).ToList() ?? new List<PageResponse>());
 

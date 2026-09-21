@@ -44,6 +44,8 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
         theme.HasKey(item => item.Id);
         theme.HasIndex(item => item.WebsiteId);
         theme.Property(item => item.Name).HasMaxLength(200);
+        theme.Property(item => item.Price).HasPrecision(18, 2);
+        theme.Property(item => item.ThumbnailUrl).HasMaxLength(2000);
         theme.HasMany(item => item.Pages).WithOne(item => item.Theme).HasForeignKey(item => item.ThemeId).OnDelete(DeleteBehavior.Cascade);
 
         // Page Configuration

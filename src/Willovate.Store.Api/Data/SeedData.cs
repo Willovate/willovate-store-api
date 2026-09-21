@@ -51,6 +51,8 @@ public static class SeedData
                 WebsiteId = DefaultWebsiteId,
                 Name = "Dawn Theme",
                 IsLive = true,
+                Price = 149.99m,
+                ThumbnailUrl = "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=600&h=400",
                 LastEdited = createdAt.UtcDateTime
             };
 
