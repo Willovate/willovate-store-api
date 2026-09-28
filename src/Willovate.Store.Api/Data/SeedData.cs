@@ -29,9 +29,6 @@ public static class SeedData
 
         if (!await dbContext.Websites.AnyAsync(w => w.Id == DefaultWebsiteId))
         {
-            var homePageId = Guid.NewGuid();
-            var aboutPageId = Guid.NewGuid();
-
             var website = new Website
             {
                 Id = DefaultWebsiteId,
@@ -44,118 +41,7 @@ public static class SeedData
                 UpdatedAt = createdAt
             };
 
-            var themeId = Guid.NewGuid();
-            var theme = new Theme
-            {
-                Id = themeId,
-                WebsiteId = DefaultWebsiteId,
-                Name = "Dawn Theme",
-                IsLive = true,
-                Price = 149.99m,
-                ThumbnailUrl = "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=600&h=400",
-                LastEdited = createdAt.UtcDateTime
-            };
-
             dbContext.Websites.Add(website);
-            dbContext.Themes.Add(theme);
-
-            dbContext.Pages.AddRange(
-                new Page
-                {
-                    Id = homePageId,
-                    ThemeId = themeId,
-                    Title = "Home",
-                    Slug = "home",
-                    Description = "The store landing page",
-                    DisplayOrder = 0,
-                    IsHomePage = true,
-                    IsHidden = false,
-                    CreatedAt = createdAt,
-                    UpdatedAt = createdAt
-                },
-                new Page
-                {
-                    Id = aboutPageId,
-                    ThemeId = themeId,
-                    Title = "About Us",
-                    Slug = "about",
-                    Description = "Tell visitors about your brand",
-                    DisplayOrder = 1,
-                    IsHomePage = false,
-                    IsHidden = false,
-                    CreatedAt = createdAt,
-                    UpdatedAt = createdAt
-                });
-
-            dbContext.PageElements.AddRange(
-                new PageElement
-                {
-                    Id = Guid.NewGuid(),
-                    PageId = homePageId,
-                    ElementType = "heading",
-                    Name = "Hero Heading",
-                    DisplayOrder = 0,
-                    Properties = new Dictionary<string, object> { ["content"] = "Summer Collection" },
-                    IsEditable = true,
-                    IsRequired = true,
-                    CreatedAt = createdAt,
-                    UpdatedAt = createdAt
-                },
-                new PageElement
-                {
-                    Id = Guid.NewGuid(),
-                    PageId = homePageId,
-                    ElementType = "text",
-                    Name = "Hero Description",
-                    DisplayOrder = 1,
-                    Properties = new Dictionary<string, object> { ["content"] = "Light, modern and made for you. Discover the latest styles." },
-                    IsEditable = true,
-                    IsRequired = false,
-                    CreatedAt = createdAt,
-                    UpdatedAt = createdAt
-                },
-                new PageElement
-                {
-                    Id = Guid.NewGuid(),
-                    PageId = homePageId,
-                    ElementType = "button",
-                    Name = "Shop Now Button",
-                    DisplayOrder = 2,
-                    Properties = new Dictionary<string, object> { ["content"] = "Shop Now", ["url"] = "#catalog" },
-                    IsEditable = true,
-                    IsRequired = false,
-                    CreatedAt = createdAt,
-                    UpdatedAt = createdAt
-                },
-                new PageElement
-                {
-                    Id = Guid.NewGuid(),
-                    PageId = aboutPageId,
-                    ElementType = "heading",
-                    Name = "About Heading",
-                    DisplayOrder = 0,
-                    Properties = new Dictionary<string, object> { ["content"] = "Our Story" },
-                    IsEditable = true,
-                    IsRequired = true,
-                    CreatedAt = createdAt,
-                    UpdatedAt = createdAt
-                },
-                new PageElement
-                {
-                    Id = Guid.NewGuid(),
-                    PageId = aboutPageId,
-                    ElementType = "text",
-                    Name = "About Description",
-                    DisplayOrder = 1,
-                    Properties = new Dictionary<string, object>
-                    {
-                        ["content"] = "We bring together independent makers and thoughtful design, choosing pieces that earn their place in your day. Every product in our collection is selected for quality, sustainability, and the quiet joy it brings."
-                    },
-                    IsEditable = true,
-                    IsRequired = false,
-                    CreatedAt = createdAt,
-                    UpdatedAt = createdAt
-                });
         }
 
         await dbContext.SaveChangesAsync();
