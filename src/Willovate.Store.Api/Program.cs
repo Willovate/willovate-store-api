@@ -44,6 +44,7 @@ builder.Services.AddScoped<IWebsiteService, WebsiteService>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<IPageService, PageService>();
 builder.Services.AddScoped<IPageElementService, PageElementService>();
+builder.Services.AddScoped<ITemplateService, TemplateService>();
 builder.Services.AddScoped<IAiService, AiService>();
 
 var allowedOrigins = builder.Configuration
@@ -109,6 +110,7 @@ static async Task InitialiseDatabaseAsync(WebApplication app)
     }
 
     await SeedData.InitialiseAsync(dbContext);
+    await TemplateSeeder.SeedAsync(dbContext);
     await CleanupStrayHomePageElementsAsync(dbContext);
 }
 

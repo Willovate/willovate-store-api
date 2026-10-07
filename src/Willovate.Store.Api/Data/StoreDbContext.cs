@@ -11,6 +11,7 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
     public DbSet<Theme> Themes => Set<Theme>();
     public DbSet<Page> Pages => Set<Page>();
     public DbSet<PageElement> PageElements => Set<PageElement>();
+    public DbSet<Template> Templates => Set<Template>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,5 +69,21 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
                 properties => JsonSerializer.Serialize(properties, (JsonSerializerOptions?)null),
                 properties => JsonSerializer.Deserialize<Dictionary<string, object>>(properties, (JsonSerializerOptions?)null) ?? new Dictionary<string, object>())
             .HasColumnType("jsonb");
+
+        // Template Configuration
+        var template = modelBuilder.Entity<Template>();
+        template.HasKey(item => item.Id);
+        template.HasIndex(item => item.TemplateId).IsUnique();
+        template.Property(item => item.TemplateId).HasMaxLength(100);
+        template.Property(item => item.Name).HasMaxLength(200);
+        template.Property(item => item.Category).HasMaxLength(100);
+        template.Property(item => item.Subcategory).HasMaxLength(100);
+        template.Property(item => item.Description).HasMaxLength(1_000);
+        template.Property(item => item.Status).HasMaxLength(50);
+        template.Property(item => item.Badge).HasMaxLength(50);
+        template.Property(item => item.PreviewImage).HasMaxLength(2000);
+        template.Property(item => item.ThemeConfiguration).HasColumnType("jsonb");
+        template.Property(item => item.SectionConfiguration).HasColumnType("jsonb");
+        template.Property(item => item.ImageConfiguration).HasColumnType("jsonb");
     }
 }

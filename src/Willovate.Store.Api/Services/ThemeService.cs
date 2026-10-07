@@ -100,7 +100,7 @@ public sealed class ThemeService(StoreDbContext dbContext) : IThemeService
                 }
             }
         }
-        else
+        else if (request.CreateDefaultPage)
         {
             // Empty theme
             var homePageId = Guid.NewGuid();

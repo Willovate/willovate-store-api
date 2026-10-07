@@ -47,9 +47,87 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
         };
 
         dbContext.Websites.Add(website);
+
+        var template = await dbContext.Templates.FirstOrDefaultAsync(t => t.TemplateId == request.TemplateId, cancellationToken);
+        if (template != null)
+        {
+            var theme = new Theme
+            {
+                Id = Guid.NewGuid(),
+                WebsiteId = website.Id,
+                Name = template.Name,
+                IsLive = true,
+                Price = 0,
+                LastEdited = DateTime.UtcNow
+            };
+            dbContext.Themes.Add(theme);
+
+            var page = new Page
+            {
+                Id = Guid.NewGuid(),
+                ThemeId = theme.Id,
+                Title = "Home",
+                Slug = "home",
+                IsHomePage = true,
+                DisplayOrder = 0
+            };
+            dbContext.Pages.Add(page);
+
+            // Decode SectionConfiguration if not empty
+            bool hasSections = false;
+            var sectionConfig = request.SectionConfiguration ?? template.SectionConfiguration;
+            if (!string.IsNullOrWhiteSpace(sectionConfig) && sectionConfig != "{}")
+            {
+                try
+                {
+                    var sections = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(sectionConfig);
+                    if (sections != null && sections.Count > 0)
+                    {
+                        hasSections = true;
+                        int order = 0;
+                        foreach (var sec in sections)
+                        {
+                            var elType = sec.TryGetValue("type", out var typeVal) ? typeVal?.ToString() ?? "text" : "text";
+                            dbContext.PageElements.Add(new PageElement
+                            {
+                                Id = Guid.NewGuid(),
+                                PageId = page.Id,
+                                ElementType = elType,
+                                Name = $"{elType} Section",
+                                DisplayOrder = order++,
+                                Properties = sec,
+                                IsEditable = true
+                            });
+                        }
+                    }
+                }
+                catch { /* fallback to default */ }
+            }
+
+            if (!hasSections)
+            {
+                dbContext.PageElements.Add(new PageElement
+                {
+                    Id = Guid.NewGuid(),
+                    PageId = page.Id,
+                    ElementType = "hero",
+                    Name = "Hero",
+                    DisplayOrder = 0,
+                    Properties = new Dictionary<string, object>
+                    {
+                        { "title", template.Name },
+                        { "subtitle", template.Description ?? "Welcome to your new website!" },
+                        { "align", "center" }
+                    },
+                    IsEditable = true
+                });
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(website);
+        // Fetch it again to include the newly created themes
+        return await GetWebsiteAsync(website.Id, cancellationToken) ?? ToResponse(website);
     }
 
     public async Task<WebsiteResponse> UpdateWebsiteAsync(Guid websiteId, UpdateWebsiteRequest request, CancellationToken cancellationToken)
@@ -73,11 +151,95 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
         if (request.IsPublished.HasValue)
             website.IsPublished = request.IsPublished.Value;
 
+        if (!string.IsNullOrWhiteSpace(request.TemplateId) && website.TemplateId != request.TemplateId)
+        {
+            website.TemplateId = request.TemplateId;
+            
+            // Delete existing themes to make way for the new template
+            dbContext.Themes.RemoveRange(website.Themes);
+            
+            var template = await dbContext.Templates.FirstOrDefaultAsync(t => t.TemplateId == request.TemplateId, cancellationToken);
+            if (template != null)
+            {
+                var theme = new Theme
+                {
+                    Id = Guid.NewGuid(),
+                    WebsiteId = website.Id,
+                    Name = template.Name,
+                    IsLive = true,
+                    Price = 0,
+                    LastEdited = DateTime.UtcNow
+                };
+                dbContext.Themes.Add(theme);
+
+                var page = new Page
+                {
+                    Id = Guid.NewGuid(),
+                    ThemeId = theme.Id,
+                    Title = "Home",
+                    Slug = "home",
+                    IsHomePage = true,
+                    DisplayOrder = 0
+                };
+                dbContext.Pages.Add(page);
+
+                bool hasSections = false;
+                var sectionConfig = request.SectionConfiguration ?? template.SectionConfiguration;
+                if (!string.IsNullOrWhiteSpace(sectionConfig) && sectionConfig != "{}")
+                {
+                    try
+                    {
+                        var sections = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(sectionConfig);
+                        if (sections != null && sections.Count > 0)
+                        {
+                            hasSections = true;
+                            int order = 0;
+                            foreach (var sec in sections)
+                            {
+                                var elType = sec.TryGetValue("type", out var typeVal) ? typeVal?.ToString() ?? "text" : "text";
+                                dbContext.PageElements.Add(new PageElement
+                                {
+                                    Id = Guid.NewGuid(),
+                                    PageId = page.Id,
+                                    ElementType = elType,
+                                    Name = $"{elType} Section",
+                                    DisplayOrder = order++,
+                                    Properties = sec,
+                                    IsEditable = true
+                                });
+                            }
+                        }
+                    }
+                    catch { /* fallback to default */ }
+                }
+
+                if (!hasSections)
+                {
+                    dbContext.PageElements.Add(new PageElement
+                    {
+                        Id = Guid.NewGuid(),
+                        PageId = page.Id,
+                        ElementType = "hero",
+                        Name = "Hero",
+                        DisplayOrder = 0,
+                        Properties = new Dictionary<string, object>
+                        {
+                            { "title", template.Name },
+                            { "subtitle", template.Description ?? "Welcome to your website!" },
+                            { "align", "center" }
+                        },
+                        IsEditable = true
+                    });
+                }
+            }
+        }
+
         website.UpdatedAt = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-
-        return ToResponse(website);
+        
+        // Fetch it again to include the newly created themes
+        return await GetWebsiteAsync(website.Id, cancellationToken) ?? ToResponse(website);
     }
 
     public async Task DeleteWebsiteAsync(Guid websiteId, CancellationToken cancellationToken)
@@ -99,7 +261,7 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
             website.IsPublished,
             website.CreatedAt,
             website.UpdatedAt,
-            website.Themes.Select(ThemeToResponse).ToList());
+            website.Themes?.Select(ThemeToResponse).ToList() ?? []);
 
     private static ThemeResponse ThemeToResponse(Theme theme) =>
         new(
@@ -110,7 +272,7 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
             theme.Price,
             theme.ThumbnailUrl,
             theme.LastEdited,
-            theme.Pages.OrderBy(p => p.DisplayOrder).Select(PageToResponse).ToList());
+            theme.Pages?.OrderBy(p => p.DisplayOrder).Select(PageToResponse).ToList() ?? []);
 
     private static PageResponse PageToResponse(Page page) =>
         new(
@@ -124,7 +286,7 @@ public sealed class WebsiteService(StoreDbContext dbContext) : IWebsiteService
             page.IsHidden,
             page.CreatedAt,
             page.UpdatedAt,
-            page.Elements.OrderBy(e => e.DisplayOrder).Select(ElementToResponse).ToList());
+            page.Elements?.OrderBy(e => e.DisplayOrder).Select(ElementToResponse).ToList() ?? []);
 
     private static PageElementResponse ElementToResponse(PageElement element) =>
         new(

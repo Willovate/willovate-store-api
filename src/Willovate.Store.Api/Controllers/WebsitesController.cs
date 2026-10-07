@@ -23,7 +23,7 @@ public sealed class WebsitesController(
         Guid websiteId;
         if (!Guid.TryParse(websiteIdOrSlug, out websiteId))
         {
-            if (websiteIdOrSlug.Equals("willovate-store", StringComparison.OrdinalIgnoreCase))
+            if (websiteIdOrSlug.Equals("willovate-store", StringComparison.OrdinalIgnoreCase) || websiteIdOrSlug == "1")
             {
                 websiteId = Willovate.Store.Api.Data.SeedData.DefaultWebsiteId;
             }
@@ -52,7 +52,7 @@ public sealed class WebsitesController(
         CancellationToken cancellationToken)
     {
         var website = await websiteService.CreateWebsiteAsync(request, cancellationToken);
-        return CreatedAtAction(nameof(GetWebsite), new { websiteId = website.Id }, website);
+        return CreatedAtAction(nameof(GetWebsite), new { websiteIdOrSlug = website.Id }, website);
     }
 
     [HttpPut("{websiteId}")]

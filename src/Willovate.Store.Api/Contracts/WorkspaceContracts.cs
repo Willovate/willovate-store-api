@@ -51,19 +51,23 @@ public sealed record CreateWebsiteRequest(
     string Name,
     string Description,
     string TemplateId,
-    string? ThemeColor = null);
+    string? ThemeColor = null,
+    string? SectionConfiguration = null);
 
 public sealed record UpdateWebsiteRequest(
     string? Name = null,
     string? Description = null,
+    string? TemplateId = null,
     string? ThemeColor = null,
-    bool? IsPublished = null);
+    bool? IsPublished = null,
+    string? SectionConfiguration = null);
 
 public sealed record CreateThemeRequest(
     string Name,
     decimal Price = 0m,
     string? ThumbnailUrl = null,
-    bool DuplicateFromLive = false);
+    bool DuplicateFromLive = false,
+    bool CreateDefaultPage = true);
 
 public sealed record UpdateThemeRequest(
     string? Name = null,
