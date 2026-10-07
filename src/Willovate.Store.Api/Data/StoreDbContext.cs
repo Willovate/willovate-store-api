@@ -5,11 +5,22 @@ namespace Willovate.Store.Api.Data;
 
 public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContext(options)
 {
+    public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Template> Templates => Set<Template>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var customer = modelBuilder.Entity<Customer>();
+
+        customer.HasKey(item => item.Id);
+        customer.HasIndex(item => item.NormalizedEmail).IsUnique();
+        customer.Property(item => item.Email).HasMaxLength(320);
+        customer.Property(item => item.NormalizedEmail).HasMaxLength(320);
+        customer.Property(item => item.PasswordHash).HasMaxLength(512);
+        customer.Property(item => item.FirstName).HasMaxLength(100);
+        customer.Property(item => item.LastName).HasMaxLength(100);
+
         var product = modelBuilder.Entity<Product>();
 
         product.HasKey(item => item.Id);
