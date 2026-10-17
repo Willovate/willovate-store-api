@@ -5,10 +5,22 @@ namespace Willovate.Store.Api.Data;
 
 public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : DbContext(options)
 {
+    public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<Template> Templates => Set<Template>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var customer = modelBuilder.Entity<Customer>();
+
+        customer.HasKey(item => item.Id);
+        customer.HasIndex(item => item.NormalizedEmail).IsUnique();
+        customer.Property(item => item.Email).HasMaxLength(320);
+        customer.Property(item => item.NormalizedEmail).HasMaxLength(320);
+        customer.Property(item => item.PasswordHash).HasMaxLength(512);
+        customer.Property(item => item.FirstName).HasMaxLength(100);
+        customer.Property(item => item.LastName).HasMaxLength(100);
+
         var product = modelBuilder.Entity<Product>();
 
         product.HasKey(item => item.Id);
@@ -23,5 +35,18 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
         product.Property(item => item.VisualTheme).HasMaxLength(40);
         product.Property(item => item.Price).HasPrecision(18, 2);
         product.Property(item => item.CompareAtPrice).HasPrecision(18, 2);
+
+        var template = modelBuilder.Entity<Template>();
+
+        template.HasKey(item => item.Id);
+        template.HasIndex(item => item.Slug).IsUnique();
+        template.HasIndex(item => item.BusinessType);
+        template.Property(item => item.Slug).HasMaxLength(120);
+        template.Property(item => item.Name).HasMaxLength(180);
+        template.Property(item => item.BusinessType).HasMaxLength(80);
+        template.Property(item => item.ShortDescription).HasMaxLength(500);
+        template.Property(item => item.SearchText).HasMaxLength(1_500);
+        template.Property(item => item.ThumbnailUrl).HasMaxLength(500);
+        template.Property(item => item.FullPreviewUrl).HasMaxLength(500);
     }
 }
