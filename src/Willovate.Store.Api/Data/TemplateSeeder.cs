@@ -8,8 +8,7 @@ public static class TemplateSeeder
 {
     public static async Task SeedAsync(StoreDbContext dbContext)
     {
-        if (await dbContext.Templates.AnyAsync()) return;
-
+        var existingIds = await dbContext.Templates.Select(t => t.TemplateId).ToListAsync();
         var templates = new List<Template>
         {
 
@@ -1135,7 +1134,11 @@ public static class TemplateSeeder
             },
         };
 
-        dbContext.Templates.AddRange(templates);
-        await dbContext.SaveChangesAsync();
+        var missingTemplates = templates.Where(t => !existingIds.Contains(t.TemplateId)).ToList();
+        if (missingTemplates.Count > 0)
+        {
+            dbContext.Templates.AddRange(missingTemplates);
+            await dbContext.SaveChangesAsync();
+        }
     }
 }

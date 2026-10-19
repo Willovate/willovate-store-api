@@ -1,5 +1,10 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using System.Text;
+using Willovate.Store.Api.Configuration;
 using Willovate.Store.Api.Data;
 using Willovate.Store.Api.Services;
 
@@ -45,13 +50,15 @@ if (usePostgres)
     var dataSource = dataSourceBuilder.Build();
 
     builder.Services.AddDbContext<StoreDbContext>(options =>
-        options.UseNpgsql(dataSource));
+        options.UseNpgsql(dataSource)
+            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
 }
 else
 {
     builder.Services.AddDbContext<StoreDbContext>(options =>
         options.UseInMemoryDatabase(builder.Environment.IsEnvironment("Testing") ? "willovate-store-tests" : "willovate-store-dev"));
 }
+
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IWebsiteService, WebsiteService>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
@@ -59,10 +66,48 @@ builder.Services.AddScoped<IPageService, PageService>();
 builder.Services.AddScoped<IPageElementService, PageElementService>();
 builder.Services.AddScoped<ITemplateService, TemplateService>();
 builder.Services.AddScoped<IAiService, AiService>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<ICustomerRegistrationService, CustomerRegistrationService>();
+builder.Services.AddScoped<ICustomerLoginService, CustomerLoginService>();
+builder.Services.AddScoped<ICustomerGoogleAuthService, CustomerGoogleAuthService>();
+builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
+builder.Services.AddScoped<ICustomerMicrosoftAuthService, CustomerMicrosoftAuthService>();
+builder.Services.AddScoped<IMicrosoftTokenValidator, MicrosoftTokenValidator>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+// Configure options from appsettings
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection("Google"));
+builder.Services.Configure<MicrosoftOptions>(builder.Configuration.GetSection("Microsoft"));
+
+// Configure JWT authentication
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "willovate-store-api-dev-jwt-secret-key-32chars-minimum!";
+
+var tokenValidationParameters = new TokenValidationParameters
+{
+    ValidateIssuerSigningKey = true,
+    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+    ValidateIssuer = true,
+    ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "willovate-store-api",
+    ValidateAudience = true,
+    ValidAudience = builder.Configuration["Jwt:Audience"] ?? "willovate-store-client",
+    ValidateLifetime = true,
+    ClockSkew = TimeSpan.Zero
+};
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = tokenValidationParameters;
+});
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>() ?? ["http://localhost:5173"];
+    .Get<string[]>() ?? ["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"];
 
 builder.Services.AddCors(options =>
 {
@@ -88,6 +133,8 @@ if (!app.Environment.IsEnvironment("Testing"))
 }
 
 app.UseCors("StoreUi");
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/", () => Results.Redirect("/swagger"));
 

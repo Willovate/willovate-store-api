@@ -43,10 +43,14 @@ public static class SeedData
                 Product("cinnamon-brioche-morning-buns", "Cardamom & Brown Sugar Brioche Morning Bun", "Laminated brioche rolled with Vietnamese cinnamon, crushed green cardamom, and raw demerara sugar.", "Pastries", 5.00m, null, 35, "pastry", true, createdAt),
 
                 // General Goods
-                Product("cloud-linen-shirt", "Cloud Linen Apron & Shirt", "Relaxed tailoring in breathable European natural linen.", "Apparel", 2499, 3199, 18, "sky", false, createdAt),
-                Product("orbit-desk-lamp", "Orbit Ceramic Cafe Lamp", "Warm, focused light with a sculptural matte terracotta finish.", "Home", 3899, null, 9, "sun", false, createdAt),
-                Product("daybreak-tote", "Daybreak Canvas Bakery Tote", "Spacious heavy-duty tote bag made from 100% recycled canvas.", "Accessories", 1799, 2199, 24, "coral", false, createdAt),
-                Product("stillness-candle", "Hearth & Coffee Soy Candle", "Cedar, espresso, vanilla bean and rain with a clean burning cotton wick.", "Home", 899, null, 34, "lavender", false, createdAt));
+                Product("cloud-linen-shirt", "Cloud Linen Shirt", "Relaxed tailoring in breathable European linen.", "Apparel", 2499, 3199, 18, "sky", true, createdAt),
+                Product("orbit-desk-lamp", "Orbit Desk Lamp", "Warm, focused light with a sculptural matte finish.", "Home", 3899, null, 9, "sun", true, createdAt),
+                Product("daybreak-tote", "Daybreak Tote", "A spacious everyday carry made from recycled canvas.", "Accessories", 1799, 2199, 24, "coral", true, createdAt),
+                Product("stillness-candle", "Stillness Candle", "Cedar, bergamot and rain with a clean soy wax burn.", "Home", 899, null, 34, "lavender", false, createdAt),
+                Product("studio-wireless-headphones", "Studio Wireless Headphones", "Balanced sound, soft-touch comfort and 40-hour battery life.", "Tech", 6999, 7999, 11, "ink", true, createdAt),
+                Product("everyday-sneakers", "Everyday Sneakers", "Low-profile comfort designed for long city walks.", "Apparel", 4299, null, 16, "mint", false, createdAt),
+                Product("field-notebook-set", "Field Notebook Set", "Three lay-flat notebooks with dot-grid recycled paper.", "Stationery", 599, 749, 42, "sand", false, createdAt),
+                Product("arc-water-bottle", "Arc Water Bottle", "Double-wall stainless steel that stays cold for 24 hours.", "Accessories", 1299, null, 27, "ocean", false, createdAt));
         }
 
         if (!await dbContext.Websites.AnyAsync(w => w.Id == DefaultWebsiteId))
@@ -64,6 +68,17 @@ public static class SeedData
             };
 
             dbContext.Websites.Add(website);
+        }
+
+        if (!await dbContext.Templates.AnyAsync())
+        {
+            dbContext.Templates.AddRange(
+                Template("mino-store", "Mino Store", "clothing-store", ["Minimal", "Modern"], "Minimal fashion store for everyday style.", "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1600&q=80", 100, createdAt),
+                Template("layer-fashion", "Layer Fashion", "clothing-store", ["Casual", "Modern"], "Modern clothing & apparel store.", "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1600&q=80", 95, createdAt),
+                Template("urban-thread", "Urban Thread", "clothing-store", ["Streetwear"], "Streetwear store for the bold and unique.", "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=1600&q=80", 90, createdAt),
+                Template("velora", "Velora", "clothing-store", ["Luxury", "Boutique"], "Luxury fashion boutique for timeless elegance.", "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=80", 88, createdAt),
+                Template("luna-boutique", "Luna Boutique", "clothing-store", ["Boutique", "Luxury"], "Elegant women's fashion store.", "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80", 85, createdAt),
+                Template("nova-wear", "Nova Wear", "clothing-store", ["Modern", "Casual"], "Modern clothing for a new generation.", "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1600&q=80", 80, createdAt));
         }
 
         await dbContext.SaveChangesAsync();
@@ -94,5 +109,36 @@ public static class SeedData
             VisualTheme = visualTheme,
             IsFeatured = isFeatured,
             CreatedAt = createdAt
+        };
+
+    private static Template Template(
+        string slug,
+        string name,
+        string businessType,
+        List<string> tags,
+        string shortDescription,
+        string thumbnailUrl,
+        string fullPreviewUrl,
+        int popularityScore,
+        DateTimeOffset createdAt) => new()
+        {
+            Id = Guid.NewGuid(),
+            TemplateId = slug,
+            Slug = slug,
+            Name = name,
+            Category = businessType.ToLowerInvariant(),
+            BusinessType = businessType.ToLowerInvariant(),
+            Tags = tags,
+            Description = shortDescription,
+            ShortDescription = shortDescription,
+            SearchText = $"{name} {shortDescription} {string.Join(' ', tags)}".ToLowerInvariant(),
+            PreviewImage = thumbnailUrl,
+            ThumbnailUrl = thumbnailUrl,
+            FullPreviewUrl = fullPreviewUrl,
+            PopularityScore = popularityScore,
+            IsActive = true,
+            IsAvailable = true,
+            CreatedAt = createdAt,
+            UpdatedAt = createdAt
         };
 }
