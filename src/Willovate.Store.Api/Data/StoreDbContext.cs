@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Willovate.Store.Api.Models;
 
 namespace Willovate.Store.Api.Data;
@@ -7,7 +8,14 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
 {
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<Website> Websites => Set<Website>();
+    public DbSet<Theme> Themes => Set<Theme>();
+    public DbSet<Page> Pages => Set<Page>();
+    public DbSet<PageElement> PageElements => Set<PageElement>();
     public DbSet<Template> Templates => Set<Template>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<Reservation> Reservations => Set<Reservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,17 +44,104 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
         product.Property(item => item.Price).HasPrecision(18, 2);
         product.Property(item => item.CompareAtPrice).HasPrecision(18, 2);
 
-        var template = modelBuilder.Entity<Template>();
+        // Website Configuration
+        var website = modelBuilder.Entity<Website>();
+        website.HasKey(item => item.Id);
+        website.HasIndex(item => item.TemplateId);
+        website.Property(item => item.Name).HasMaxLength(200);
+        website.Property(item => item.Description).HasMaxLength(1_000);
+        website.Property(item => item.TemplateId).HasMaxLength(100);
+        website.Property(item => item.ThemeColor).HasMaxLength(20);
+        website.HasMany(item => item.Themes).WithOne(item => item.Website).HasForeignKey(item => item.WebsiteId).OnDelete(DeleteBehavior.Cascade);
 
+        // Theme Configuration
+        var theme = modelBuilder.Entity<Theme>();
+        theme.HasKey(item => item.Id);
+        theme.HasIndex(item => item.WebsiteId);
+        theme.Property(item => item.Name).HasMaxLength(200);
+        theme.Property(item => item.Price).HasPrecision(18, 2);
+        theme.Property(item => item.ThumbnailUrl).HasMaxLength(2000);
+        theme.HasMany(item => item.Pages).WithOne(item => item.Theme).HasForeignKey(item => item.ThemeId).OnDelete(DeleteBehavior.Cascade);
+
+        // Page Configuration
+        var page = modelBuilder.Entity<Page>();
+        page.HasKey(item => item.Id);
+        page.HasIndex(item => new { item.ThemeId, item.Slug }).IsUnique();
+        page.Property(item => item.Title).HasMaxLength(200);
+        page.Property(item => item.Slug).HasMaxLength(120);
+        page.Property(item => item.Description).HasMaxLength(1_000);
+        page.HasMany(item => item.Elements).WithOne(item => item.Page).HasForeignKey(item => item.PageId).OnDelete(DeleteBehavior.Cascade);
+
+        // PageElement Configuration
+        var element = modelBuilder.Entity<PageElement>();
+        element.HasKey(item => item.Id);
+        element.HasIndex(item => item.PageId);
+        element.Property(item => item.ElementType).HasMaxLength(50);
+        element.Property(item => item.Name).HasMaxLength(200);
+        element.Property(item => item.Properties)
+            .HasConversion(
+                properties => JsonSerializer.Serialize(properties, (JsonSerializerOptions?)null),
+                properties => JsonSerializer.Deserialize<Dictionary<string, object>>(properties, (JsonSerializerOptions?)null) ?? new Dictionary<string, object>())
+            .HasColumnType("jsonb");
+
+        // Template Configuration
+        var template = modelBuilder.Entity<Template>();
         template.HasKey(item => item.Id);
-        template.HasIndex(item => item.Slug).IsUnique();
+        template.HasIndex(item => item.TemplateId);
+        template.HasIndex(item => item.Slug);
         template.HasIndex(item => item.BusinessType);
+        template.Property(item => item.TemplateId).HasMaxLength(100);
         template.Property(item => item.Slug).HasMaxLength(120);
-        template.Property(item => item.Name).HasMaxLength(180);
+        template.Property(item => item.Name).HasMaxLength(200);
+        template.Property(item => item.Category).HasMaxLength(100);
         template.Property(item => item.BusinessType).HasMaxLength(80);
+        template.Property(item => item.Subcategory).HasMaxLength(100);
+        template.Property(item => item.Description).HasMaxLength(1_000);
         template.Property(item => item.ShortDescription).HasMaxLength(500);
         template.Property(item => item.SearchText).HasMaxLength(1_500);
+        template.Property(item => item.Status).HasMaxLength(50);
+        template.Property(item => item.Badge).HasMaxLength(50);
+        template.Property(item => item.PreviewImage).HasMaxLength(2000);
         template.Property(item => item.ThumbnailUrl).HasMaxLength(500);
         template.Property(item => item.FullPreviewUrl).HasMaxLength(500);
+        template.Property(item => item.ThemeConfiguration).HasColumnType("jsonb");
+        template.Property(item => item.SectionConfiguration).HasColumnType("jsonb");
+        template.Property(item => item.ImageConfiguration).HasColumnType("jsonb");
+
+        // Order Configuration
+        var order = modelBuilder.Entity<Order>();
+        order.HasKey(item => item.Id);
+        order.HasIndex(item => item.WebsiteId);
+        order.Property(item => item.CustomerName).HasMaxLength(200);
+        order.Property(item => item.CustomerEmail).HasMaxLength(200);
+        order.Property(item => item.CustomerPhone).HasMaxLength(50);
+        order.Property(item => item.DeliveryAddress).HasMaxLength(1_000);
+        order.Property(item => item.OrderMode).HasMaxLength(50);
+        order.Property(item => item.Status).HasMaxLength(50);
+        order.Property(item => item.TotalAmount).HasPrecision(18, 2);
+        order.HasMany(item => item.Items).WithOne(item => item.Order).HasForeignKey(item => item.OrderId).OnDelete(DeleteBehavior.Cascade);
+        order.HasOne(item => item.Website).WithMany().HasForeignKey(item => item.WebsiteId).OnDelete(DeleteBehavior.Cascade);
+
+        // OrderItem Configuration
+        var orderItem = modelBuilder.Entity<OrderItem>();
+        orderItem.HasKey(item => item.Id);
+        orderItem.Property(item => item.MenuItemId).HasMaxLength(100);
+        orderItem.Property(item => item.Name).HasMaxLength(200);
+        orderItem.Property(item => item.Price).HasPrecision(18, 2);
+
+        // Reservation Configuration
+        var reservation = modelBuilder.Entity<Reservation>();
+        reservation.HasKey(item => item.Id);
+        reservation.HasIndex(item => item.WebsiteId);
+        reservation.Property(item => item.Date).HasMaxLength(50);
+        reservation.Property(item => item.Time).HasMaxLength(50);
+        reservation.Property(item => item.CustomerName).HasMaxLength(200);
+        reservation.Property(item => item.CustomerEmail).HasMaxLength(200);
+        reservation.Property(item => item.CustomerPhone).HasMaxLength(50);
+        reservation.Property(item => item.SpecialRequests).HasMaxLength(1_000);
+        reservation.Property(item => item.SeatingPreference).HasMaxLength(100);
+        reservation.Property(item => item.Occasion).HasMaxLength(100);
+        reservation.Property(item => item.Status).HasMaxLength(50);
+        reservation.HasOne(item => item.Website).WithMany().HasForeignKey(item => item.WebsiteId).OnDelete(DeleteBehavior.Cascade);
     }
 }
