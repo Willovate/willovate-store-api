@@ -22,22 +22,35 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-if (builder.Environment.IsEnvironment("Testing"))
+bool usePostgres = false;
+var connectionString = builder.Configuration.GetConnectionString("Store");
+if (!string.IsNullOrEmpty(connectionString) && !builder.Environment.IsEnvironment("Testing"))
 {
-    builder.Services.AddDbContext<StoreDbContext>(options =>
-        options.UseInMemoryDatabase("willovate-store-tests"));
+    try
+    {
+        using var testConn = new NpgsqlConnection(connectionString);
+        testConn.Open();
+        usePostgres = true;
+    }
+    catch
+    {
+        Console.WriteLine("[Database] PostgreSQL server not reachable at localhost:5432. Gracefully falling back to in-memory database with complete seeding.");
+    }
 }
-else
-{
-    var connectionString = builder.Configuration.GetConnectionString("Store")
-        ?? throw new InvalidOperationException("Connection string 'Store' is not configured.");
 
+if (usePostgres)
+{
     var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
     dataSourceBuilder.EnableDynamicJson();
     var dataSource = dataSourceBuilder.Build();
 
     builder.Services.AddDbContext<StoreDbContext>(options =>
         options.UseNpgsql(dataSource));
+}
+else
+{
+    builder.Services.AddDbContext<StoreDbContext>(options =>
+        options.UseInMemoryDatabase(builder.Environment.IsEnvironment("Testing") ? "willovate-store-tests" : "willovate-store-dev"));
 }
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IWebsiteService, WebsiteService>();

@@ -12,6 +12,9 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
     public DbSet<Page> Pages => Set<Page>();
     public DbSet<PageElement> PageElements => Set<PageElement>();
     public DbSet<Template> Templates => Set<Template>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<Reservation> Reservations => Set<Reservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -85,5 +88,41 @@ public sealed class StoreDbContext(DbContextOptions<StoreDbContext> options) : D
         template.Property(item => item.ThemeConfiguration).HasColumnType("jsonb");
         template.Property(item => item.SectionConfiguration).HasColumnType("jsonb");
         template.Property(item => item.ImageConfiguration).HasColumnType("jsonb");
+
+        // Order Configuration
+        var order = modelBuilder.Entity<Order>();
+        order.HasKey(item => item.Id);
+        order.HasIndex(item => item.WebsiteId);
+        order.Property(item => item.CustomerName).HasMaxLength(200);
+        order.Property(item => item.CustomerEmail).HasMaxLength(200);
+        order.Property(item => item.CustomerPhone).HasMaxLength(50);
+        order.Property(item => item.DeliveryAddress).HasMaxLength(1_000);
+        order.Property(item => item.OrderMode).HasMaxLength(50);
+        order.Property(item => item.Status).HasMaxLength(50);
+        order.Property(item => item.TotalAmount).HasPrecision(18, 2);
+        order.HasMany(item => item.Items).WithOne(item => item.Order).HasForeignKey(item => item.OrderId).OnDelete(DeleteBehavior.Cascade);
+        order.HasOne(item => item.Website).WithMany().HasForeignKey(item => item.WebsiteId).OnDelete(DeleteBehavior.Cascade);
+
+        // OrderItem Configuration
+        var orderItem = modelBuilder.Entity<OrderItem>();
+        orderItem.HasKey(item => item.Id);
+        orderItem.Property(item => item.MenuItemId).HasMaxLength(100);
+        orderItem.Property(item => item.Name).HasMaxLength(200);
+        orderItem.Property(item => item.Price).HasPrecision(18, 2);
+
+        // Reservation Configuration
+        var reservation = modelBuilder.Entity<Reservation>();
+        reservation.HasKey(item => item.Id);
+        reservation.HasIndex(item => item.WebsiteId);
+        reservation.Property(item => item.Date).HasMaxLength(50);
+        reservation.Property(item => item.Time).HasMaxLength(50);
+        reservation.Property(item => item.CustomerName).HasMaxLength(200);
+        reservation.Property(item => item.CustomerEmail).HasMaxLength(200);
+        reservation.Property(item => item.CustomerPhone).HasMaxLength(50);
+        reservation.Property(item => item.SpecialRequests).HasMaxLength(1_000);
+        reservation.Property(item => item.SeatingPreference).HasMaxLength(100);
+        reservation.Property(item => item.Occasion).HasMaxLength(100);
+        reservation.Property(item => item.Status).HasMaxLength(50);
+        reservation.HasOne(item => item.Website).WithMany().HasForeignKey(item => item.WebsiteId).OnDelete(DeleteBehavior.Cascade);
     }
 }

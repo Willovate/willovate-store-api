@@ -67,7 +67,21 @@ public sealed class PageElementService(StoreDbContext dbContext) : IPageElementS
             element.DisplayOrder = request.DisplayOrder.Value;
 
         if (request.Properties is not null)
-            element.Properties = request.Properties;
+        {
+            if (element.Properties == null)
+            {
+                element.Properties = request.Properties;
+            }
+            else
+            {
+                var merged = new Dictionary<string, object>(element.Properties);
+                foreach (var kvp in request.Properties)
+                {
+                    merged[kvp.Key] = kvp.Value;
+                }
+                element.Properties = merged;
+            }
+        }
 
         if (request.IsEditable.HasValue)
             element.IsEditable = request.IsEditable.Value;
@@ -83,6 +97,11 @@ public sealed class PageElementService(StoreDbContext dbContext) : IPageElementS
     {
         var element = await dbContext.PageElements.FindAsync([elementId], cancellationToken: cancellationToken)
             ?? throw new KeyNotFoundException($"PageElement {elementId} not found");
+
+        if (element.IsRequired || element.ElementType == "nav" || element.ElementType == "footer")
+        {
+            throw new InvalidOperationException("This section is required and cannot be removed.");
+        }
 
         dbContext.PageElements.Remove(element);
         await dbContext.SaveChangesAsync(cancellationToken);

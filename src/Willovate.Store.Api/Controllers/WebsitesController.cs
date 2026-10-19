@@ -389,5 +389,9 @@ public sealed class WebsitesController(
         {
             return Problem(statusCode: StatusCodes.Status404NotFound, title: "Element not found");
         }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(statusCode: StatusCodes.Status400BadRequest, title: ex.Message);
+        }
     }
 }

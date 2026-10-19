@@ -187,13 +187,60 @@ public sealed class ThemeService(StoreDbContext dbContext) : IThemeService
 
     public async Task<ThemeResponse> DuplicateThemeAsync(Guid themeId, CancellationToken cancellationToken)
     {
-        var theme = await dbContext.Themes
+        var sourceTheme = await dbContext.Themes
+            .AsNoTracking()
             .Include(t => t.Pages)
             .ThenInclude(p => p.Elements)
             .FirstOrDefaultAsync(t => t.Id == themeId, cancellationToken)
             ?? throw new KeyNotFoundException($"Theme {themeId} not found");
 
-        return await CreateThemeAsync(theme.WebsiteId, new CreateThemeRequest($"{theme.Name} (Copy)", DuplicateFromLive: true), cancellationToken);
+        var newTheme = new Theme
+        {
+            Id = Guid.NewGuid(),
+            WebsiteId = sourceTheme.WebsiteId,
+            Name = $"{sourceTheme.Name} (Copy)",
+            IsLive = false,
+            Price = sourceTheme.Price,
+            ThumbnailUrl = sourceTheme.ThumbnailUrl,
+            LastEdited = DateTime.UtcNow
+        };
+        dbContext.Themes.Add(newTheme);
+
+        foreach (var page in sourceTheme.Pages)
+        {
+            var newPageId = Guid.NewGuid();
+            var newPage = new Page
+            {
+                Id = newPageId,
+                ThemeId = newTheme.Id,
+                Title = page.Title,
+                Slug = page.Slug,
+                Description = page.Description,
+                DisplayOrder = page.DisplayOrder,
+                IsHomePage = page.IsHomePage,
+                IsHidden = page.IsHidden
+            };
+            dbContext.Pages.Add(newPage);
+
+            foreach (var element in page.Elements)
+            {
+                var newElement = new PageElement
+                {
+                    Id = Guid.NewGuid(),
+                    PageId = newPageId,
+                    ElementType = element.ElementType,
+                    Name = element.Name,
+                    DisplayOrder = element.DisplayOrder,
+                    Properties = new Dictionary<string, object>(element.Properties ?? new()),
+                    IsEditable = element.IsEditable,
+                    IsRequired = element.IsRequired
+                };
+                dbContext.PageElements.Add(newElement);
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetThemeAsync(newTheme.Id, cancellationToken) ?? ToResponse(newTheme);
     }
 
     private static ThemeResponse ToResponse(Theme theme) =>

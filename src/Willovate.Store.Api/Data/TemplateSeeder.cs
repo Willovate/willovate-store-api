@@ -416,6 +416,86 @@ public static class TemplateSeeder
             new Template
             {
                 Id = Guid.NewGuid(),
+                TemplateId = "ghost-bite",
+                Name = "GhostBite",
+                Category = "cloud-kitchen",
+                Description = "Urban dark kitchen template with smash burgers and late-night delivery",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 26,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "green-fuel",
+                Name = "GreenFuel",
+                Category = "cloud-kitchen",
+                Description = "Clean eating & macro-counted meal-prep cloud kitchen template",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 27,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "masala-route",
+                Name = "Masala Route",
+                Category = "cloud-kitchen",
+                Description = "Authentic Indian delivery kitchen template with dough-sealed handi dum biryani",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 28,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "umami-express",
+                Name = "Umami Express",
+                Category = "cloud-kitchen",
+                Description = "Asian fusion delivery template with two-tier separated broth craft ramen",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 29,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "the-cloud-collective",
+                Name = "The Cloud Collective",
+                Category = "cloud-kitchen",
+                Description = "Multi-brand virtual food hall template with unified shared cart",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 30,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
                 TemplateId = "napoli-fire",
                 Name = "Napoli Fire",
                 Category = "pizza",
@@ -576,6 +656,86 @@ public static class TemplateSeeder
             new Template
             {
                 Id = Guid.NewGuid(),
+                TemplateId = "maharajas-table",
+                Name = "Maharaja's Table",
+                Category = "indian",
+                Description = "Imperial Awadhi and Mughal royal court dining template with dum biryanis and saffron specialties",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 35,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "sattva-kitchen",
+                Name = "Sattva Kitchen",
+                Category = "indian",
+                Description = "Contemporary plant-forward vegetarian Indian dining template celebrating organic seasonal harvests",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 35,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "bombay-chowk",
+                Name = "Bombay Chowk",
+                Category = "indian",
+                Description = "Modern energetic Mumbai street food template with tawa pav bhaji, crispy chaat and rolls",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 35,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "tandoor-and-tadka",
+                Name = "Tandoor & Tadka",
+                Category = "indian",
+                Description = "Premium Punjabi grill and North Indian smokehouse template with charcoal clay tandoor specialties",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 35,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "dakshin-house",
+                Name = "Dakshin House",
+                Category = "indian",
+                Description = "Contemporary South Indian tiffin template celebrating stone-ground dosas and degree filter coffee",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 35,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
                 TemplateId = "frost-and-fruit",
                 Name = "Frost And Fruit",
                 Category = "dessert-shop",
@@ -656,10 +816,90 @@ public static class TemplateSeeder
             new Template
             {
                 Id = Guid.NewGuid(),
-                TemplateId = "fork-express",
-                Name = "Fork Express",
+                TemplateId = "sugar-atelier",
+                Name = "Sugar Atelier",
+                Category = "dessert-shop",
+                Description = "Haute French patisserie and luxury dessert boutique template with macarons, tarts and viennoiserie",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 40,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "chococraft",
+                Name = "ChocoCraft",
+                Category = "dessert-shop",
+                Description = "Artisanal bean-to-bar single-origin chocolates, hand-rolled truffles and gift hampers template",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 40,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "scoop-society",
+                Name = "Scoop Society",
+                Category = "dessert-shop",
+                Description = "Contemporary small-batch craft ice cream, slow-churned gelatos and sundae kits template",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 40,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "crumb-and-cream",
+                Name = "Crumb & Cream",
+                Category = "dessert-shop",
+                Description = "Modern celebration cake studio template featuring bento cakes, tiers and baked cheesecakes",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 40,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "sugar-street",
+                Name = "Sugar Street",
+                Category = "dessert-shop",
+                Description = "Energetic colorful dessert bar template with NYC stuffed cookies, brownies and brioche donuts",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 40,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "swift-bite",
+                Name = "SwiftBite",
                 Category = "food-delivery",
-                Description = "Fork Express template for food-delivery",
+                Description = "High-speed food delivery template with 25-minute flash delivery and cravings combos",
                 Status = "Active",
                 IsAvailable = true,
                 DisplayOrder = 41,
@@ -672,10 +912,10 @@ public static class TemplateSeeder
             new Template
             {
                 Id = Guid.NewGuid(),
-                TemplateId = "dash-eats",
-                Name = "Dash Eats",
+                TemplateId = "midnight-munch",
+                Name = "Midnight Munch",
                 Category = "food-delivery",
-                Description = "Dash Eats template for food-delivery",
+                Description = "Gourmet late-night comfort food delivery template with smash burgers, loaded fries and Detroit pizza",
                 Status = "Active",
                 IsAvailable = true,
                 DisplayOrder = 42,
@@ -688,10 +928,10 @@ public static class TemplateSeeder
             new Template
             {
                 Id = Guid.NewGuid(),
-                TemplateId = "local-plate",
-                Name = "Local Plate",
+                TemplateId = "fresh-route",
+                Name = "FreshRoute",
                 Category = "food-delivery",
-                Description = "Local Plate template for food-delivery",
+                Description = "Farm-to-table organic nourish bowls, salads, cold-pressed raw juices and meal subscriptions",
                 Status = "Active",
                 IsAvailable = true,
                 DisplayOrder = 43,
@@ -704,10 +944,10 @@ public static class TemplateSeeder
             new Template
             {
                 Id = Guid.NewGuid(),
-                TemplateId = "hungry-hero",
-                Name = "Hungry Hero",
+                TemplateId = "tiffin-trail",
+                Name = "TiffinTrail",
                 Category = "food-delivery",
-                Description = "Hungry Hero template for food-delivery",
+                Description = "Authentic Indian homestyle meal delivery, regional thalis, and daily lunch subscriptions",
                 Status = "Active",
                 IsAvailable = true,
                 DisplayOrder = 44,
@@ -720,13 +960,93 @@ public static class TemplateSeeder
             new Template
             {
                 Id = Guid.NewGuid(),
-                TemplateId = "zip-meals",
-                Name = "Zip Meals",
+                TemplateId = "feast-fleet",
+                Name = "FeastFleet",
                 Category = "food-delivery",
-                Description = "Zip Meals template for food-delivery",
+                Description = "Modern multi-restaurant food delivery marketplace with single shared cart and zero double delivery fees",
                 Status = "Active",
                 IsAvailable = true,
                 DisplayOrder = 45,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "dash-eats",
+                Name = "Dash Eats",
+                Category = "food-delivery",
+                Description = "SwiftBite alias template for food-delivery",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 46,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "fork-express",
+                Name = "Fork Express",
+                Category = "food-delivery",
+                Description = "Midnight Munch alias template for food-delivery",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 47,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "local-plate",
+                Name = "Local Plate",
+                Category = "food-delivery",
+                Description = "FreshRoute alias template for food-delivery",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 48,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "hungry-hero",
+                Name = "Hungry Hero",
+                Category = "food-delivery",
+                Description = "TiffinTrail alias template for food-delivery",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 49,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                ThemeConfiguration = "{}",
+                SectionConfiguration = "{}",
+                ImageConfiguration = "{}"
+            },
+            new Template
+            {
+                Id = Guid.NewGuid(),
+                TemplateId = "zip-meals",
+                Name = "Zip Meals",
+                Category = "food-delivery",
+                Description = "FeastFleet alias template for food-delivery",
+                Status = "Active",
+                IsAvailable = true,
+                DisplayOrder = 50,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
                 ThemeConfiguration = "{}",
